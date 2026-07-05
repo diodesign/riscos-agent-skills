@@ -1,13 +1,23 @@
 ---
 name: using-bbcbasic
 description: Syntax and usage for BASIC on RISC OS. Use this whenever you are creating, editing or reviewing BASIC code (files which end in `,fd1`).
+metadata:
+  author: gerph@gerph.org
 license: MIT
+allowed-tools: Bash(riscos-build-run:*) Bash(host-open:*)
 ---
 # BBC BASIC
 
 ## Summary
 
-BASIC programs have a filename which ends with `,fd1` and does not have an extension.
+* BASIC programs in textual format have a filename which ends with `,fd1` and does not have an extension. Prefer creating textual format files.
+* BASIC programs in tokenised format have a filename which ends with `,ffb` and does not have an extension. Never edit tokenised files. Tokenised files can be decoded with:
+
+    riscos-basicdetokenise -i PROGRAM,ffb -o OUTPUT,fd1
+    riscos-basicdetokenise -i PROGRAM,ffb
+
+  Always use the `-i` form. Do not call `riscos-basicdetokenise PROGRAM,ffb`
+  without `-i`; that only prints the syntax message.
 
 * Line numbers should not be used.
 
@@ -33,6 +43,14 @@ BASIC programs have a filename which ends with `,fd1` and does not have an exten
 
 * To show the user a screenshot, use the shell command `host-open screen.png`.
 
+## Detokenising for review
+
+When reviewing or porting tokenised BASIC libraries:
+
+* Detokenise the file first with `riscos-basicdetokenise -i <file>` before reasoning about symbol names, menu strings, or record-field use.
+* Treat `riscos-basicdetokenise <file>` without `-i` as wrong; it does not detokenise the file.
+* Treat the detokenised output as the source of truth for behaviour matching. Token streams can hide the real identifiers and make control flow or string content easy to misread.
+
 ## Structure
 
 * Statements may be separated by a `:` character, but this is discouraged.
@@ -56,6 +74,8 @@ Before you declare anything complete when drawing graphics, check that you've re
 To select a resolution, use:
 
     MODE "X<xpixels> Y<ypixels> C<colours>"
+
+For tests that require a specific colour depth, prefer an explicit mode string such as `MODE "X640 Y480 C256"` rather than relying on a numeric mode number. Numeric modes vary by environment and may not have the expected depth.
 
 For paletted modes (where you can change the colours) you would usually use a 16 colour mode
 like `MODE 27`, which is 640x480 pixels.
@@ -113,6 +133,34 @@ If you want to check for errors, use the X-prefixed version of the SWI name, and
 in the form `SYS "Xswiname", r0,r1,r2,... TO r0,r1,r2 ;flags%`. Bit 0 of `flags%` will be set if an error (V flag) was returned.
 If the error was returned, the error number will be in the memory at r0+0, which you can read with `r0!0`.
 Up to 10 registers can be passed into the SWI and returned.
+
+Example usage of non-erroring SWI call:
+
+```basic
+REM BBC BASIC - use X-SWIs for error handling
+SYS "XTimer_ReturnNumber", 0 TO r0%,r1%,r2%;flags%
+IF flags% AND 1 THEN
+  error_num% = r0%!0 : REM Error number at R0+0
+  PRINT "Error returned: &";~error_num%
+ELSE
+  PRINT "Timers count: ";r0%
+ENDIF
+```
+
+It is redundant to use X-SWIs and raise errors if nothing is being handled.
+
+**Wrong**:
+```basic
+SYS "XModule_Parse", file$ TO h%; flags%
+IF (flags% AND 1) THEN SYS "OS_GenerateError", h%
+```
+
+**Correct**:
+```basic
+SYS "Module_Parse", file$ TO h%
+```
+
+This implicitly raises the error.
 
 ### Converting C code
 
@@ -184,6 +232,12 @@ Is equivalent to:
 
     $ptr% = "Hi!"+CHR$0
 
+## Heap-managed allocation
+
+For programs which need C-like dynamic allocation, especially desktop applications which keep many buffers or variable-sized structures alive for a long time, see [references/heaplib.md](references/heaplib.md).
+
+The skill also includes a reusable plain-text copy of the non-debug library at `assets/HeapLib/HeapLib,fd1`.
+
 
 ## Common pitfalls
 
@@ -245,6 +299,51 @@ Using `GCOL` to select colours in a 256 colour mode does not work as you expect.
 
 Instead of this, use `OS_SetColour`, eg `SYS "OS_SetColour",0,<colour>` which allows the full 256 colour range to be used.
 
+**Tilde (`~`) is a PRINT format modifier only**:
+
+The `~` prefix formats a number as hexadecimal, but it is only valid as a format modifier
+directly inside a `PRINT` statement (or `PRINT ... ;` chain). It cannot be used inside a
+string expression.
+
+```basic
+PRINT ~n%             : REM OK - prints n% in hex
+PRINT "val: ";~n%     : REM OK - prints "val: " then hex n%
+```
+
+To embed a hexadecimal number inside a string, use `STR$~`:
+
+```basic
+msg$ = "value is &" + STR$~n%     : REM correct
+msg$ = "value is &" + ~n%         : REM WRONG - syntax error
+```
+
+**`ON ERROR LOCAL` cannot be used at top level**:
+
+`ON ERROR LOCAL` installs a local error handler that is only valid inside a `PROC` or `FN`.
+Using it at the top level of a program (outside any procedure) causes a
+"badly nested error handler" error.
+
+Use `ON ERROR` (without `LOCAL`) at top level, or move the guarded code into a `PROC`:
+
+```basic
+REM at top level, use the plain form:
+ON ERROR ERROR EXT ERR, REPORT$ + " at line " + STR$(ERL/10)
+```
+
+For per-call error trapping without a procedure boundary, use X-prefixed SWIs and check
+bit 0 of the flags variable instead of relying on `ON ERROR LOCAL`.
+
+## BASIC smoke tests
+
+When BASIC is used for smoke tests or SWI probes:
+
+- `--command` runs OSCLI, not BASIC statements.
+- Put `SYS`, `MODE`, loops, and assertion logic in the BASIC file itself.
+- Pass the host file on the command line and use the RISC OS filename in the
+  `Run` command.
+- Use XSWIs in tests when you need to inspect the returned error block or flags.
+
 ## References
 
 * For the full BBC BASIC commands list, see [references/commands.md](references/commands.md).
+* For dynamic heap allocation patterns, relocatable blocks, and garbage collection hooks, see [references/heaplib.md](references/heaplib.md).

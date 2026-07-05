@@ -1,0 +1,4 @@
+interface:
+  display_name: "Writing Pascal"
+  short_description: "Develop Pascal code for RISC OS builds."
+  default_prompt: "Use $writing-pascal to write or review Pascal code for the RISC OS build environment."

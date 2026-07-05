@@ -1,0 +1,4 @@
+interface:
+  display_name: "CMHG"
+  short_description: "Define RISC OS modules with CMHG."
+  default_prompt: "Use $using-cmhg to write or review a CMHG file for a RISC OS module."

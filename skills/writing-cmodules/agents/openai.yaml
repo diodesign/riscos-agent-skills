@@ -1,0 +1,4 @@
+interface:
+  display_name: "Writing C Modules"
+  short_description: "Implement RISC OS modules in C."
+  default_prompt: "Use $writing-cmodules to create or extend a RISC OS module written in C."

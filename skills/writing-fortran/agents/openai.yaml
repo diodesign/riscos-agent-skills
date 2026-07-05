@@ -1,0 +1,4 @@
+interface:
+  display_name: "Writing Fortran"
+  short_description: "Develop Fortran code for RISC OS builds."
+  default_prompt: "Use $writing-fortran to write or review Fortran code for the RISC OS build environment."

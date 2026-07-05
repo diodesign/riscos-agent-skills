@@ -1,0 +1,4 @@
+interface:
+  display_name: "RISC OS Resolver"
+  short_description: "Use the RISC OS Resolver module."
+  default_prompt: "Use $riscos-network-resolver to implement or explain DNS lookups and Resolver integration on RISC OS."

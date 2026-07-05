@@ -1,0 +1,4 @@
+interface:
+  display_name: "RISC OS Makefiles"
+  short_description: "Edit AMU makefiles for RISC OS projects."
+  default_prompt: "Use $using-makefiles to create, extend, or diagnose a RISC OS Makefile,fe1 build."

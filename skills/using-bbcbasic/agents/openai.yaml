@@ -1,0 +1,4 @@
+interface:
+  display_name: "BBC BASIC"
+  short_description: "Write and review BBC BASIC for RISC OS."
+  default_prompt: "Use $using-bbcbasic to create, edit, or review RISC OS BBC BASIC code."

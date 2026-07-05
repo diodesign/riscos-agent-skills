@@ -59,6 +59,12 @@ Selects a new screen mode. Accepts any mode specifier type.
 - Returns the mode number if selected by number
 - Returns a pointer to the mode selector if selected by block
 
+**Practical use:**
+- Preserve an old-style mode number when one is returned, rather than
+  immediately converting it to a selector block.
+- When saving or restoring screen-like sprite data, this is the simplest way
+  to determine whether the current mode has a stable numbered form.
+
 ---
 
 ### OS_ScreenMode 2 — Enumerate Available Modes
@@ -124,6 +130,27 @@ When a mode change is performed (by any method), the OS:
 3. Clears and reinitialises the screen buffer.
 4. Resets the text cursor, graphics window, and palette to mode defaults.
 5. Broadcasts `Service_ModeChanged` (&47) — modules update their internal state.
+
+---
+
+## Matching A Sprite To A Screen Mode
+
+When deciding whether a screen mode already matches a sprite, or when building
+an `OS_ScreenMode 0` selector from sprite properties, compare the parts of the
+mode which affect framebuffer layout and palette interpretation:
+
+- pixel depth
+- X resolution in pixels
+- Y resolution in pixels
+- X eig factor
+- Y eig factor
+- for 8bpp modes, whether the mode is a full-palette mode
+
+If those do not match, screen-memory copies and palette handling may be wrong
+even if the nominal colour depth looks compatible.
+
+For new-style sprite mode words, it is valid to build a selector block from the
+sprite properties rather than relying on a lookup table of known modes.
 
 ---
 

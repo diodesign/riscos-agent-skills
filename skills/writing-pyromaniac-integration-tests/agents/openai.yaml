@@ -1,0 +1,4 @@
+interface:
+  display_name: "Pyromaniac Integration Tests"
+  short_description: "Write testcode suites and helpers."
+  default_prompt: "Use $writing-pyromaniac-integration-tests to add or update Pyromaniac integration tests under testcode/, including BASIC smoke tests, assembly helpers, and expectation files."

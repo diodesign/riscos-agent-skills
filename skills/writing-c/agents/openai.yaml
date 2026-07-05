@@ -1,0 +1,4 @@
+interface:
+  display_name: "Writing C"
+  short_description: "Write C in the RISC OS project style."
+  default_prompt: "Use $writing-c to create, edit, or review C code for a RISC OS project."

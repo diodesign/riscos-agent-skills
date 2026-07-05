@@ -1,0 +1,114 @@
+; Constants for OS_SpriteOp
+
+SpriteOp_SystemArea * 0x000
+SpriteOp_UserArea   * 0x100
+SpriteOp_UserSprite * 0x200
+
+SpriteReason_ScreenSave * 0x2
+SpriteReason_ScreenLoad * 0x3
+SpriteReason_ReadAreaCB * 0x8               ; *SInfo
+SpriteReason_ClearSprites * 0x9             ; *SNew
+SpriteReason_LoadSpriteFile * 0xa           ; *SLoad <filename>
+SpriteReason_MergeSpriteFile * 0xb          ; *SMerge <filename>
+SpriteReason_SaveSpriteFile * 0xc           ; *SSave <filename>
+SpriteReason_ReturnName * 0xd
+SpriteReason_GetSprite * 0xe                ; *SGet <n>
+SpriteReason_CreateSprite * 0xf
+SpriteReason_GetSpriteUserCoords * 0x10
+SpriteReason_CheckSpriteArea * 0x11
+SpriteReason_SelectSprite * 0x18             ; *SChoose <n> [<m>]
+SpriteReason_DeleteSprite * 0x19             ; *SDelete <n>
+SpriteReason_RenameSprite * 0x1a             ; *SRename
+SpriteReason_CopySprite * 0x1b
+SpriteReason_PutSprite * 0x1c
+SpriteReason_CreateMask * 0x1d
+SpriteReason_RemoveMask * 0x1e
+SpriteReason_InsertRow * 0x1f
+SpriteReason_DeleteRow * 0x20
+SpriteReason_FlipAboutXAxis * 0x21
+SpriteReason_PutSpriteUserCoords * 0x22
+SpriteReason_AppendSprite * 0x23
+SpriteReason_SetPointerShape * 0x24
+SpriteReason_CreateRemovePalette * 0x25
+SpriteReason_CreateRemoveAlphaMask * 0x26
+SpriteReason_ReadSpriteSize * 0x28
+SpriteReason_ReadPixelColour * 0x29
+SpriteReason_WritePixelColour * 0x2a
+SpriteReason_ReadPixelMask * 0x2b
+SpriteReason_WritePixelMask * 0x2c
+SpriteReason_InsertCol * 0x2d
+SpriteReason_DeleteCol * 0x2e
+SpriteReason_FlipAboutYAxis * 0x2f
+SpriteReason_PlotMask * 0x30
+SpriteReason_PlotMaskUserCoords * 0x31
+SpriteReason_PlotMaskScaled * 0x32
+SpriteReason_PaintCharScaled * 0x33
+SpriteReason_PutSpriteScaled * 0x34
+SpriteReason_PutSpriteGreyScaled * 0x35
+SpriteReason_RemoveLeftHandWastage * 0x36
+SpriteReason_PlotMaskTransformed * 0x37
+SpriteReason_PutSpriteTransformed * 0x38
+SpriteReason_InsertDeleteRows * 0x39
+SpriteReason_InsertDeleteColumns * 0x3a
+SpriteReason_SwitchOutputToSprite * 0x3c
+SpriteReason_SwitchOutputToMask * 0x3d
+SpriteReason_ReadSaveAreaSize * 0x3e
+SpriteReason_TileSpriteScaled * 0x41
+SpriteReason_BadReasonCode * 0x42
+
+spNext * 0x0      ;   Offset to next sprite
+spName * 0x4      ;   Sprite name
+spWidth * 0x10     ;   Width in words-1      (0..639)
+spHeight * 0x14    ;   Height in scanlines-1 (0..255/511)
+spLBit * 0x18      ;   First bit used (left end of row)
+spRBit * 0x1c      ;   Last bit used (right end of row)
+spImage * 0x20     ;   Offset to sprite image
+spTrans * 0x24     ;   Offset to transparancy mask
+spMode * 0x28      ;   Mode sprite was defined in
+spPalette * 0x2c
+sp2Width * 0x18
+sp2Reserved * 0x1c
+SpriteCBsize * 0x2c
+
+SpriteNameSize * 0xc
+MaxSpritePaletteSize * 0x800
+MaxSpriteWidth * 0x8000    ; Words ???
+MaxSpriteHeight * 0x8000   ; Rows
+
+saEnd * 0x0          ;  Offset to end of sprite area (ie total size)
+saNumber * 0x4       ;  Number of sprites in area
+saFirst * 0x8        ;  Offset to first sprite
+saFree * 0xc         ;  Offset to first free word
+saExten * 0x10
+SpriteAreaCBsize * 0x10
+
+; sprite types in the mode word
+SpriteType_Old * 0x0        ;  0  old format
+SpriteType_New1bpp * 0x1    ;  1  1 bpp
+SpriteType_New2bpp * 0x2    ;  2  2 bpp
+SpriteType_New4bpp * 0x3    ;  3  4 bpp
+SpriteType_New8bpp * 0x4    ;  4  8 bpp
+SpriteType_New16bpp * 0x5   ;  5  16 bpp
+SpriteType_New32bpp * 0x6   ;  6  32 bpp
+SpriteType_CMYK * 0x7       ;  7 cmyk - no support in OS
+SpriteType_MAX * 0x8        ;  maximum type allocated
+SpriteType_New24bpp * 0x8   ;  8 packed 24bpp - no support in OS
+SpriteType_JPEG * 0x9       ;  9 JPEG - no support in OS
+SpriteType_Substitute * 0x6
+
+; Bits that may be set in the plot actions in OS_SpriteOp 28, 32, 52, 56, 65.
+SpritePlotAction_UseMask                * (1<<3)
+SpritePlotAction_UsePalette             * (1<<4)
+SpritePlotAction_WideTranslationPresent * (1<<5)
+SpritePlotAction_Dither                 * (1<<6)
+SpritePlotAction_ColourMap              * (1<<7)
+SpritePlotAction_TranslucencyShift      * 8
+SpritePlotAction_TranslucencyMask       * 255
+
+; Pointer shapes
+SetPointerShape_ShapeNumberMask         * 3
+SetPointerShape_NoShape                 * (1<<4)
+SetPointerShape_NoPalette               * (1<<5)
+SetPointerShape_NoNumber                * (1<<6)
+
+        END

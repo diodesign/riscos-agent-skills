@@ -1,0 +1,4 @@
+interface:
+  display_name: "Using Perl"
+  short_description: "Keep Perl code compatible with the RISC OS interpreter."
+  default_prompt: "Use $using-perl when writing, reviewing, or debugging Perl that may need to run under the RISC OS Perl interpreter."

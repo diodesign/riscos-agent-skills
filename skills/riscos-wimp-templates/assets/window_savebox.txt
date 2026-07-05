@@ -1,0 +1,75 @@
+wimp_window {
+  template_name:"savebox"
+  visible:738,1120,1052,1390
+  xscroll:0
+  yscroll:0
+  next:wimp_TOP
+  window_flags:wimp_WINDOW_MOVEABLE | wimp_WINDOW_AUTO_REDRAW | wimp_WINDOW_NO_BOUNDS | wimp_WINDOW_BOUNDED_ONCE | wimp_WINDOW_TITLE_ICON | wimp_WINDOW_NEW_FORMAT
+  title_fg:wimp_COLOUR_BLACK
+  title_bg:wimp_COLOUR_LIGHT_GREY
+  work_fg:wimp_COLOUR_BLACK
+  work_bg:wimp_COLOUR_VERY_LIGHT_GREY
+  scroll_outer:wimp_COLOUR_CREAM
+  scroll_inner:wimp_COLOUR_ORANGE
+  highlight_bg:wimp_COLOUR_LIGHT_GREY
+  extra_flags:
+  extent:0,-270,314,0
+  title_flags:wimp_ICON_TEXT | wimp_ICON_BORDER | wimp_ICON_HCENTRED | wimp_ICON_VCENTRED | wimp_ICON_FILLED | wimp_ICON_INDIRECTED
+  work_flags:wimp_BUTTON_CLICK
+  sprite_area:&1
+  xmin:304
+  ymin:0
+  text.text:"Save as"
+  text.size:8
+  text.validation:""
+  wimp_icon {
+    extent:156,-254,296,-186
+    icon_flags:wimp_ICON_TEXT | wimp_ICON_BORDER | wimp_ICON_HCENTRED | wimp_ICON_VCENTRED | wimp_ICON_FILLED | wimp_ICON_INDIRECTED | wimp_BUTTON_CLICK
+    icon_esg:1
+    icon_fg:wimp_COLOUR_BLACK
+    icon_bg:wimp_COLOUR_VERY_LIGHT_GREY
+    text.text:"Save"
+    text.size:12
+    text.validation:"R6,3"
+  }
+  wimp_icon {
+    extent:406,-116,514,-72
+    icon_flags:wimp_ICON_TEXT | wimp_ICON_BORDER | wimp_ICON_VCENTRED | wimp_ICON_FILLED | wimp_ICON_INDIRECTED | wimp_BUTTON_CLICK_DRAG
+    icon_esg:0
+    icon_fg:wimp_COLOUR_BLACK
+    icon_bg:wimp_COLOUR_DARK_GREEN
+    text.text:"xxxxxx"
+    text.size:30
+    text.validation:""
+  }
+  wimp_icon {
+    extent:30,-168,286,-116
+    icon_flags:wimp_ICON_TEXT | wimp_ICON_BORDER | wimp_ICON_HCENTRED | wimp_ICON_VCENTRED | wimp_ICON_FILLED | wimp_ICON_INDIRECTED | wimp_BUTTON_WRITABLE
+    icon_esg:0
+    icon_fg:wimp_COLOUR_BLACK
+    icon_bg:wimp_COLOUR_WHITE
+    text.text:""
+    text.size:256
+    text.validation:"Pptr_write,2,2"
+  }
+  wimp_icon {
+    extent:130,-92,198,-24
+    icon_flags:wimp_ICON_SPRITE | wimp_ICON_HCENTRED | wimp_ICON_VCENTRED | wimp_ICON_INDIRECTED | wimp_BUTTON_CLICK_DRAG
+    icon_esg:0
+    icon_fg:wimp_COLOUR_BLACK
+    icon_bg:wimp_COLOUR_VERY_LIGHT_GREY
+    text.text:""
+    text.size:16
+    text.validation:"Sfile_fff"
+  }
+  wimp_icon {
+    extent:18,-248,146,-196
+    icon_flags:wimp_ICON_TEXT | wimp_ICON_BORDER | wimp_ICON_HCENTRED | wimp_ICON_VCENTRED | wimp_ICON_FILLED | wimp_ICON_INDIRECTED | wimp_BUTTON_CLICK
+    icon_esg:0
+    icon_fg:wimp_COLOUR_BLACK
+    icon_bg:wimp_COLOUR_VERY_LIGHT_GREY
+    text.text:"Cancel"
+    text.size:7
+    text.validation:"R5,3"
+  }
+}

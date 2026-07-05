@@ -1,0 +1,4 @@
+interface:
+  display_name: "Using OSLib"
+  short_description: "Find OSLib headers, wrappers, and public types."
+  default_prompt: "Use $using-liboslib when working with the RISC OS OSLib typed SWI interface library, especially to identify headers, wrappers, or public types."

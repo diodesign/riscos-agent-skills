@@ -1,0 +1,19 @@
+%YAML 1.0
+---
+
+jobs:
+  test:
+    env:
+      "Sys$Environment": ROBuild
+
+    script:
+      - echo
+      - echo *** Run AIF test ***
+      - {{PREPARE_COMMANDS}}
+      - {{RUN_COMMAND}}
+      - {{ASSERTION_COMMANDS}}
+      - echo
+      - echo *** SUCCESS ***
+
+    artifacts:
+      - path: {{RETURN_ARTIFACT_PATH}}

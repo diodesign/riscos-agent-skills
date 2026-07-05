@@ -1,0 +1,3 @@
+Include: tests-sysvars.txt
+# Add any hand-written non-Pyromaniac smoke tests after the generated
+# assembly-based suites.

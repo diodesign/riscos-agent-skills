@@ -1,0 +1,63 @@
+wimp_window {
+  template_name:"quit"
+  visible:532,818,1268,1094
+  xscroll:0
+  yscroll:0
+  next:wimp_TOP
+  window_flags:wimp_WINDOW_MOVEABLE | wimp_WINDOW_AUTO_REDRAW | wimp_WINDOW_BOUNDED_ONCE | wimp_WINDOW_TITLE_ICON | wimp_WINDOW_NEW_FORMAT
+  title_fg:wimp_COLOUR_BLACK
+  title_bg:wimp_COLOUR_LIGHT_GREY
+  work_fg:wimp_COLOUR_BLACK
+  work_bg:wimp_COLOUR_VERY_LIGHT_GREY
+  scroll_outer:wimp_COLOUR_CREAM
+  scroll_inner:wimp_COLOUR_ORANGE
+  highlight_bg:wimp_COLOUR_CREAM
+  extra_flags:
+  extent:0,-1024,1280,0
+  title_flags:wimp_ICON_TEXT | wimp_ICON_BORDER | wimp_ICON_HCENTRED | wimp_ICON_VCENTRED | wimp_ICON_FILLED | wimp_ICON_INDIRECTED
+  work_flags:wimp_BUTTON_CLICK
+  sprite_area:&1
+  xmin:0
+  ymin:0
+  text.text:"Paint"
+  text.size:6
+  text.validation:""
+  wimp_icon {
+    extent:326,-252,514,-200
+    icon_flags:wimp_ICON_TEXT | wimp_ICON_BORDER | wimp_ICON_HCENTRED | wimp_ICON_VCENTRED | wimp_ICON_FILLED | wimp_ICON_INDIRECTED | wimp_BUTTON_CLICK
+    icon_esg:1
+    icon_fg:wimp_COLOUR_BLACK
+    icon_bg:wimp_COLOUR_VERY_LIGHT_GREY
+    text.text:"Discard"
+    text.size:12
+    text.validation:"R5,3"
+  }
+  wimp_icon {
+    extent:6,-174,726,-8
+    icon_flags:wimp_ICON_TEXT | wimp_ICON_HCENTRED | wimp_ICON_VCENTRED | wimp_ICON_INDIRECTED | wimp_BUTTON_CLICK_DRAG
+    icon_esg:0
+    icon_fg:wimp_COLOUR_BLACK
+    icon_bg:wimp_COLOUR_VERY_LIGHT_GREY
+    text.text:"Does my object look big in 'this' ?"
+    text.size:256
+    text.validation:"l40"
+  }
+  wimp_icon {
+    extent:528,-260,716,-192
+    icon_flags:wimp_ICON_TEXT | wimp_ICON_BORDER | wimp_ICON_HCENTRED | wimp_ICON_VCENTRED | wimp_ICON_FILLED | wimp_ICON_INDIRECTED | wimp_BUTTON_CLICK
+    icon_esg:1
+    icon_fg:wimp_COLOUR_BLACK
+    icon_bg:wimp_COLOUR_VERY_LIGHT_GREY
+    text.text:"Cancel"
+    text.size:12
+    text.validation:"R6,3"
+  }
+  wimp_icon {
+    extent:-234,-186,794,-172
+    icon_flags:wimp_ICON_SPRITE | wimp_ICON_HCENTRED | wimp_ICON_VCENTRED
+    icon_esg:0
+    icon_fg:wimp_COLOUR_BLACK
+    icon_bg:wimp_COLOUR_VERY_LIGHT_GREY
+    sprite_only:"divider"
+  }
+}

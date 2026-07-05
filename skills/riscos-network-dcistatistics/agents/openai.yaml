@@ -1,0 +1,4 @@
+interface:
+  display_name: "RISC OS DCI Statistics"
+  short_description: "Implement or inspect DCI4 statistics providers."
+  default_prompt: "Use $riscos-network-dcistatistics to work with the RISC OS DCI4 statistics interface."

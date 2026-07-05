@@ -1,0 +1,47 @@
+#
+# SUT:    Network: URLFetcher
+# Area:   SWIs
+# Class:  Functional
+# Type:   Integration test
+#
+
+
+Group: URLFetcher: Fetch
+Command: $TOOL --load-internal-modules bin/urlfetcher $ARG1
+Expect: expect/pymodules/urlfetcher/urlfetcher_$ARG1
+
+Test: Register, get, status, read, deregister
+Args: rgsdx
+
+Test: Register, get with headers, status, read, deregister
+Args: rhsdx
+
+Test: Register, get, stop, status, deregister
+Args: rgtsx
+
+
+Group: URLFetcher: Proxy
+Command: $TOOL --load-internal-modules bin/urlfetcher $ARG1
+Expect: expect/pymodules/urlfetcher/urlfetcher_$ARG1
+
+Test: Register, set proxies, enumerate, deregister
+Args: rpex
+
+
+Group: URLFetcher: Parse
+Command: $TOOL --load-internal-modules bin/urlfetcher $ARG1
+Expect: expect/pymodules/urlfetcher/urlfetcher_$ARG1
+
+Test: Parse URL
+Args: u
+
+
+Group: URLFetcher: Protocols
+Command: $TOOL --load-internal-modules bin/urlfetcher $ARG1
+Expect: expect/pymodules/urlfetcher/urlfetcher_$ARG1
+
+Test: Register, enumerate, deregister, enumerate
+Args: onkn
+
+Test: Register and show protocols command
+Args: oc

@@ -1,0 +1,7 @@
+interface:
+  display_name: "Creating Pull Requests"
+  short_description: "Write reviewer-focused pull request descriptions."
+  default_prompt: "Use $creating-pull-requests when opening a pull request or merge request and the description needs to explain the change clearly for reviewers."
+
+policy:
+  allow_implicit_invocation: true

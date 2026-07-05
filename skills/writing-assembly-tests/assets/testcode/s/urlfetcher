@@ -1,0 +1,701 @@
+
+        AREA    |Test$$Code|, CODE
+
+        GET     hdr.swis
+        GET     hdr.printmacros
+        GET     hdr.macros
+
+URL_Register            * &83E00
+URL_GetURL              * &83E01
+URL_Status              * &83E02
+URL_ReadData            * &83E03
+URL_SetProxy            * &83E04
+URL_Stop                * &83E05
+URL_Deregister          * &83E06
+URL_ParseURL            * &83E07
+URL_EnumerateSchemes    * &83E08
+URL_EnumerateProxies    * &83E09
+URL_ProtocolRegister    * &83E20
+URL_ProtocolDeregister  * &83E21
+
+URL_GetURL_UserAgentGiven       * (1 :SHL: 0)
+URL_GetURL_DataLengthGiven      * (1 :SHL: 1)
+URL_ParseURL_WordLengthGiven    * (1 :SHL: 0)
+
+URL_Status_Connected            * (1 :SHL: 0)
+URL_Status_SentRequest          * (1 :SHL: 1)
+URL_Status_SentData             * (1 :SHL: 2)
+URL_Status_Initial              * (1 :SHL: 3)
+URL_Status_Transfer             * (1 :SHL: 4)
+URL_Status_AllDone              * (1 :SHL: 5)
+URL_Status_Aborted              * (1 :SHL: 6)
+
+URL_SetProxy_Op_Proxy           * 0
+URL_SetProxy_Op_NoProxy         * 1
+URL_EnumerateProxies_NoProxy    * (1 :SHL: 0)
+
+URL_ProtocolRegister_FlagsGiven * (1 :SHL: 0)
+URL_ProtocolRegister_PortGiven  * (1 :SHL: 1)
+URLProtocol_UserAllowed         * (1 :SHL: 2)
+
+parse_components_words          * 11
+parse_output_storage_words      * 64
+protocol_swi_base               * &123450
+
+urlfetcher ROUT
+        Push    "lr"
+        MOV     r8, r1
+10
+        ADR     lr, %BT10
+        LDRB    r0, [r8], #1
+
+        TEQ     r0, #'r'
+        BEQ     do_register
+
+        TEQ     r0, #'g'
+        BEQ     do_get
+
+        TEQ     r0, #'h'
+        BEQ     do_get_headers
+
+        TEQ     r0, #'s'
+        BEQ     do_status
+
+        TEQ     r0, #'d'
+        BEQ     do_read_all
+
+        TEQ     r0, #'t'
+        BEQ     do_stop
+
+        TEQ     r0, #'x'
+        BEQ     do_deregister
+
+        TEQ     r0, #'p'
+        BEQ     do_setproxies
+
+        TEQ     r0, #'e'
+        BEQ     do_enumproxies
+
+        TEQ     r0, #'u'
+        BEQ     do_parse
+
+        TEQ     r0, #'o'
+        BEQ     do_protocol_register
+
+        TEQ     r0, #'n'
+        BEQ     do_enumschemes
+
+        TEQ     r0, #'k'
+        BEQ     do_protocol_deregister
+
+        TEQ     r0, #'c'
+        BEQ     do_proto_show
+
+        CMP     r0, #32
+        BLO     %FT90
+
+80
+        PrintLine "Syntax: urlfetcher <options>*"
+        PrintLine "Options:"
+        PrintLine "     r   URL_Register"
+        PrintLine "     g   URL_GetURL (simple GET)"
+        PrintLine "     h   URL_GetURL (user-agent + headers)"
+        PrintLine "     s   URL_Status"
+        PrintLine "     d   URL_ReadData and print body"
+        PrintLine "     t   URL_Stop after one short read"
+        PrintLine "     x   URL_Deregister"
+        PrintLine "     p   URL_SetProxy (session/global/no-proxy)"
+        PrintLine "     e   URL_EnumerateProxies"
+        PrintLine "     u   URL_ParseURL"
+        PrintLine "     o   URL_ProtocolRegister"
+        PrintLine "     n   URL_EnumerateSchemes"
+        PrintLine "     k   URL_ProtocolDeregister"
+        PrintLine "     c   *URLProtoShow"
+
+90
+        Pull    "pc"
+
+
+do_register SIGNATURE
+        Push    "lr"
+        MOV     r0, #0
+        SWI     URL_Register
+        ADRL    r2, session_handle
+        STR     r1, [r2]
+        PrintMessage "Session: "
+        MOV     r0, r1
+        PrintHex r0
+        SWI     OS_NewLine
+        Pull    "pc"
+
+
+do_get SIGNATURE
+        Push    "lr"
+        MOV     r0, #0
+        LDR     r1, session_handle
+        MOV     r2, #1
+        ADRL    r3, fetch_url
+        MOV     r4, #0
+        MOV     r5, #2
+        MOV     r6, #0
+        SWI     URL_GetURL
+        PrintMessage "Get status: "
+        PrintInteger r0
+        SWI     OS_NewLine
+        ADRL    r1, header_state
+        MOV     r0, #0
+        STR     r0, [r1]
+        ADRL    r1, body_length
+        STR     r0, [r1]
+        Pull    "pc"
+
+
+do_get_headers SIGNATURE
+        Push    "lr"
+        MOV     r0, #URL_GetURL_UserAgentGiven :OR: URL_GetURL_DataLengthGiven
+        LDR     r1, session_handle
+        MOV     r2, #1
+        ADRL    r3, fetch_url
+        ADRL    r4, request_headers
+        MOV     r5, #request_headers_len
+        ADRL    r6, user_agent
+        SWI     URL_GetURL
+        PrintMessage "Get status: "
+        PrintInteger r0
+        SWI     OS_NewLine
+        ADRL    r1, header_state
+        MOV     r0, #0
+        STR     r0, [r1]
+        ADRL    r1, body_length
+        STR     r0, [r1]
+        Pull    "pc"
+
+
+do_status SIGNATURE
+        Push    "r1-r4, lr"
+        MOV     r0, #0
+        LDR     r1, session_handle
+        SWI     URL_Status
+        PrintMessage "Status: "
+        PrintInteger r0
+        SWI     OS_NewLine
+        PrintMessage "Response code: "
+        PrintInteger r2
+        SWI     OS_NewLine
+        PrintMessage "Body bytes read: "
+        PrintInteger r3
+        SWI     OS_NewLine
+        PrintMessage "Total size: "
+        PrintInteger r4
+        SWI     OS_NewLine
+        Pull    "r1-r4, pc"
+
+
+do_read_all SIGNATURE
+        Push    "r4-r7, lr"
+        ADRL    r7, body_buffer
+        MOV     r6, #0
+10
+        MOV     r0, #0
+        LDR     r1, session_handle
+        ADRL    r2, read_buffer
+        MOV     r3, #32
+        SWI     URL_ReadData
+        MOV     r4, r4
+        MOV     r5, r5
+        PrintMessage "Read status: "
+        PrintInteger r0
+        SWI     OS_NewLine
+        PrintMessage "Read bytes: "
+        MOV     r0, r4
+        PrintInteger r0
+        SWI     OS_NewLine
+        PrintMessage "Remaining: "
+        MOV     r0, r5
+        PrintInteger r0
+        SWI     OS_NewLine
+
+        CMP     r4, #0
+        BLE     %FT20
+        ADRL    r0, read_buffer
+        MOV     r1, r4
+        BL      append_body_bytes
+20
+        CMP     r5, #0
+        BNE     %BT10
+
+        LDR     r6, body_length
+        MOV     r0, #0
+        STRB    r0, [r7, r6]
+        PrintLine "Body:"
+        MOV     r0, r7
+        SWI     OS_Write0
+        SWI     OS_NewLine
+        Pull    "r4-r7, pc"
+
+
+do_stop SIGNATURE
+        Push    "r4-r5, lr"
+        MOV     r0, #0
+        LDR     r1, session_handle
+        ADRL    r2, read_buffer
+        MOV     r3, #16
+        SWI     URL_ReadData
+        PrintMessage "Pre-stop status: "
+        PrintInteger r0
+        SWI     OS_NewLine
+        PrintMessage "Pre-stop bytes: "
+        MOV     r0, r4
+        PrintInteger r0
+        SWI     OS_NewLine
+        PrintMessage "Pre-stop remaining: "
+        MOV     r0, r5
+        PrintInteger r0
+        SWI     OS_NewLine
+
+        MOV     r0, #0
+        LDR     r1, session_handle
+        SWI     URL_Stop
+        PrintMessage "Stop status: "
+        PrintInteger r0
+        SWI     OS_NewLine
+        Pull    "r4-r5, pc"
+
+
+do_deregister SIGNATURE
+        Push    "lr"
+        MOV     r0, #0
+        LDR     r1, session_handle
+        SWI     URL_Deregister
+        PrintMessage "Deregister status: "
+        PrintInteger r0
+        SWI     OS_NewLine
+        ADRL    r1, session_handle
+        MOV     r0, #0
+        STR     r0, [r1]
+        Pull    "pc"
+
+
+do_setproxies SIGNATURE
+        Push    "lr"
+        MOV     r0, #0
+        MOV     r1, #0
+        ADRL    r2, global_proxy
+        ADRL    r3, global_prefix
+        MOV     r4, #URL_SetProxy_Op_Proxy
+        SWI     URL_SetProxy
+
+        MOV     r0, #0
+        LDR     r1, session_handle
+        ADRL    r2, session_proxy
+        ADRL    r3, session_prefix
+        MOV     r4, #URL_SetProxy_Op_Proxy
+        SWI     URL_SetProxy
+
+        MOV     r0, #0
+        LDR     r1, session_handle
+        ADRL    r2, no_proxy_prefix
+        MOV     r3, #0
+        MOV     r4, #URL_SetProxy_Op_NoProxy
+        SWI     URL_SetProxy
+
+        PrintLine "Proxies configured"
+        Pull    "pc"
+
+
+do_enumproxies SIGNATURE
+        Push    "r4-r7, lr"
+
+        PrintLine "Session proxies:"
+        MOV     r6, #0
+10
+        MOV     r0, #0
+        LDR     r1, session_handle
+        MOV     r2, r6
+        SWI     URL_EnumerateProxies
+        MOV     r6, r2
+        PrintMessage "  Context: "
+        MOV     r0, r6
+        PrintInteger r0
+        SWI     OS_NewLine
+        CMP     r6, #-1
+        BEQ     %FT20
+        PrintMessage "  Prefix: "
+        MOV     r0, r3
+        PrintString r0
+        SWI     OS_NewLine
+        PrintMessage "  Proxy: "
+        MOV     r0, r4
+        PrintString r0
+        SWI     OS_NewLine
+        B       %BT10
+20
+
+        PrintLine "Session no-proxy:"
+        MOV     r6, #0
+30
+        MOV     r0, #URL_EnumerateProxies_NoProxy
+        LDR     r1, session_handle
+        MOV     r2, r6
+        SWI     URL_EnumerateProxies
+        MOV     r6, r2
+        PrintMessage "  Context: "
+        MOV     r0, r6
+        PrintInteger r0
+        SWI     OS_NewLine
+        CMP     r6, #-1
+        BEQ     %FT40
+        PrintMessage "  Prefix: "
+        MOV     r0, r3
+        PrintString r0
+        SWI     OS_NewLine
+        B       %BT30
+40
+
+        PrintLine "Global proxies:"
+        MOV     r6, #0
+50
+        MOV     r0, #0
+        MOV     r1, #0
+        MOV     r2, r6
+        SWI     URL_EnumerateProxies
+        MOV     r6, r2
+        PrintMessage "  Context: "
+        MOV     r0, r6
+        PrintInteger r0
+        SWI     OS_NewLine
+        CMP     r6, #-1
+        BEQ     %FT60
+        PrintMessage "  Prefix: "
+        MOV     r0, r3
+        PrintString r0
+        SWI     OS_NewLine
+        PrintMessage "  Proxy: "
+        MOV     r0, r4
+        PrintString r0
+        SWI     OS_NewLine
+        B       %BT50
+60
+        Pull    "r4-r7, pc"
+
+
+do_parse SIGNATURE
+        Push    "r4-r9, lr"
+
+        MOV     r0, #URL_ParseURL_WordLengthGiven
+        MOV     r1, #0
+        ADRL    r2, parse_source
+        MOV     r3, #0
+        ADRL    r4, parse_sizes
+        MOV     r5, #parse_components_words
+        SWI     URL_ParseURL
+
+        PrintMessage "Len full: "
+        LDR     r0, parse_sizes + 0
+        PrintInteger r0
+        SWI     OS_NewLine
+        PrintMessage "Len scheme: "
+        LDR     r0, parse_sizes + 4
+        PrintInteger r0
+        SWI     OS_NewLine
+        PrintMessage "Len host: "
+        LDR     r0, parse_sizes + 8
+        PrintInteger r0
+        SWI     OS_NewLine
+        PrintMessage "Len path: "
+        LDR     r0, parse_sizes + 28
+        PrintInteger r0
+        SWI     OS_NewLine
+        PrintMessage "Len query: "
+        LDR     r0, parse_sizes + 32
+        PrintInteger r0
+        SWI     OS_NewLine
+        PrintMessage "Len fragment: "
+        LDR     r0, parse_sizes + 36
+        PrintInteger r0
+        SWI     OS_NewLine
+
+        ADRL    r4, parse_sizes
+        ADRL    r5, parse_ptrs
+        ADRL    r6, parse_output_storage
+        MOV     r7, #parse_components_words
+        BL      build_parse_pointers
+
+        MOV     r0, #URL_ParseURL_WordLengthGiven
+        MOV     r1, #1
+        ADRL    r2, parse_source
+        MOV     r3, #0
+        ADRL    r4, parse_ptrs
+        MOV     r5, #parse_components_words
+        SWI     URL_ParseURL
+
+        PrintMessage "Full: "
+        LDR     r0, parse_ptrs + 0
+        PrintString r0
+        SWI     OS_NewLine
+        PrintMessage "Scheme: "
+        LDR     r0, parse_ptrs + 4
+        PrintString r0
+        SWI     OS_NewLine
+        PrintMessage "Host: "
+        LDR     r0, parse_ptrs + 8
+        PrintString r0
+        SWI     OS_NewLine
+        PrintMessage "Port: "
+        LDR     r0, parse_ptrs + 12
+        TEQ     r0, #0
+        BEQ     %FT10
+        PrintString r0
+10
+        SWI     OS_NewLine
+        PrintMessage "Path: "
+        LDR     r0, parse_ptrs + 28
+        PrintString r0
+        SWI     OS_NewLine
+        PrintMessage "Query: "
+        LDR     r0, parse_ptrs + 32
+        PrintString r0
+        SWI     OS_NewLine
+        PrintMessage "Fragment: "
+        LDR     r0, parse_ptrs + 36
+        PrintString r0
+        SWI     OS_NewLine
+
+        ADRL    r0, compose_full
+        ADRL    r1, compose_block
+        STR     r0, [r1, #0]
+        ADRL    r0, compose_scheme
+        STR     r0, [r1, #4]
+        ADRL    r0, compose_host
+        STR     r0, [r1, #8]
+        MOV     r0, #0
+        STR     r0, [r1, #12]
+        STR     r0, [r1, #16]
+        STR     r0, [r1, #20]
+        STR     r0, [r1, #24]
+        ADRL    r0, compose_path
+        STR     r0, [r1, #28]
+        ADRL    r0, compose_query
+        STR     r0, [r1, #32]
+        ADRL    r0, compose_fragment
+        STR     r0, [r1, #36]
+        STR     r0, [r1, #40]
+
+        MOV     r0, #URL_ParseURL_WordLengthGiven
+        MOV     r1, #2
+        ADRL    r2, compose_base
+        MOV     r3, #0
+        ADRL    r4, compose_block
+        MOV     r5, #parse_components_words
+        SWI     URL_ParseURL
+
+        PrintMessage "Compose: "
+        ADRL    r0, compose_full
+        PrintString r0
+        SWI     OS_NewLine
+
+        MOV     r0, #0
+        MOV     r1, #3
+        ADRL    r2, quick_base
+        ADRL    r3, quick_relative
+        ADRL    r4, quick_buffer
+        MOV     r5, #256
+        SWI     URL_ParseURL
+        PrintMessage "Quick: "
+        ADRL    r0, quick_buffer
+        PrintString r0
+        SWI     OS_NewLine
+        PrintMessage "Quick remaining: "
+        MOV     r0, r5
+        PrintInteger r0
+        SWI     OS_NewLine
+
+        Pull    "r4-r9, pc"
+
+
+do_protocol_register SIGNATURE
+        Push    "lr"
+        MOV     r0, #URL_ProtocolRegister_FlagsGiven :OR: URL_ProtocolRegister_PortGiven
+        LDR     r1, protocol_base_value
+        ADRL    r2, protocol_scheme
+        MOV     r3, #123
+        ADRL    r4, protocol_info
+        MOV     r5, #URLProtocol_UserAllowed
+        MOV     r6, #99
+        SWI     URL_ProtocolRegister
+        PrintLine "Protocol registered"
+        Pull    "pc"
+
+
+do_enumschemes SIGNATURE
+        Push    "r4-r6, lr"
+        MOV     r6, #0
+10
+        MOV     r0, #0
+        MOV     r1, r6
+        SWI     URL_EnumerateSchemes
+        MOV     r6, r1
+        PrintMessage "Scheme context: "
+        MOV     r0, r6
+        PrintInteger r0
+        SWI     OS_NewLine
+        CMP     r6, #-1
+        BEQ     %FT20
+        PrintMessage "Scheme: "
+        MOV     r0, r2
+        PrintString r0
+        SWI     OS_NewLine
+        PrintMessage "Info: "
+        MOV     r0, r3
+        PrintString r0
+        SWI     OS_NewLine
+        PrintMessage "SWI base: "
+        MOV     r0, r4
+        PrintHex r0
+        SWI     OS_NewLine
+        PrintMessage "Version: "
+        MOV     r0, r5
+        PrintInteger r0
+        SWI     OS_NewLine
+        B       %BT10
+20
+        Pull    "r4-r6, pc"
+
+
+do_protocol_deregister SIGNATURE
+        Push    "lr"
+        MOV     r0, #0
+        LDR     r1, protocol_base_value
+        SWI     URL_ProtocolDeregister
+        PrintMessage "Protocol deregister flags: "
+        PrintInteger r0
+        SWI     OS_NewLine
+        PrintMessage "Protocol clients: "
+        MOV     r0, r1
+        PrintInteger r0
+        SWI     OS_NewLine
+        Pull    "pc"
+
+
+do_proto_show SIGNATURE
+        Push    "lr"
+        ADRL    r0, star_urlprotoshow
+        XSWI    OS_CLI
+        Pull    "pc"
+
+
+append_body_bytes ROUT
+        Push    "r2-r7, lr"
+        MOV     r4, r0
+        MOV     r5, r1
+        ADR     r6, body_buffer
+        ADR     r7, body_length
+        LDR     r2, [r7]
+        LDR     r3, header_state
+10
+        CMP     r5, #0
+        BEQ     %FT90
+        LDRB    r0, [r4], #1
+        SUB     r5, r5, #1
+
+        CMP     r3, #4
+        BEQ     %FT50
+
+        TEQ     r3, #0
+        TEQEQ   r0, #13
+        MOVEQ   r3, #1
+        BEQ     %BT10
+        TEQ     r3, #1
+        TEQEQ   r0, #10
+        MOVEQ   r3, #2
+        BEQ     %BT10
+        TEQ     r3, #2
+        TEQEQ   r0, #13
+        MOVEQ   r3, #3
+        BEQ     %BT10
+        TEQ     r3, #3
+        TEQEQ   r0, #10
+        MOVEQ   r3, #4
+        BEQ     %BT10
+
+        TEQ     r0, #13
+        MOVEQ   r3, #1
+        MOVNE   r3, #0
+        B       %BT10
+
+50
+        STRB    r0, [r6, r2]
+        ADD     r2, r2, #1
+        B       %BT10
+
+90
+        STR     r2, [r7]
+        ADR     r0, header_state
+        STR     r3, [r0]
+        Pull    "r2-r7, pc"
+
+
+build_parse_pointers ROUT
+        Push    "r0-r3, lr"
+10
+        CMP     r7, #0
+        BEQ     %FT90
+        LDR     r0, [r4], #4
+        TEQ     r0, #0
+        STREQ   r0, [r5], #4
+        BEQ     %FT20
+        STR     r6, [r5], #4
+        ADD     r6, r6, r0
+20
+        SUB     r7, r7, #1
+        B       %BT10
+90
+        Pull    "r0-r3, pc"
+
+
+session_handle       DCD     0
+header_state         DCD     0
+body_length          DCD     0
+protocol_base_value  DCD     protocol_swi_base
+
+fetch_url            = "file:///riscos-source/testcode/testdata/urlfetcher.txt", 0
+user_agent           = "Pyromaniac URLFetcher test", 0
+request_headers
+        = "Authorization: Basic dummy", 13, 10, 13, 10
+request_headers_end
+request_headers_len  * request_headers_end - request_headers
+
+global_proxy         = "http://global-proxy.example:8080/", 0
+global_prefix        = "http:", 0
+session_proxy        = "http://session-proxy.example:8080/", 0
+session_prefix       = "https:", 0
+no_proxy_prefix      = "file:", 0
+
+parse_source         = "http://Example.com:80/browser/?q=1#frag", 0
+quick_base           = "www.acorn.com/browser/", 0
+quick_relative       = "fred", 0
+
+compose_scheme       = "http", 0
+compose_host         = "Example.com", 0
+compose_path         = "browser/", 0
+compose_query        = "q=1", 0
+compose_fragment     = "frag", 0
+compose_base         = "http://example.com/", 0
+
+protocol_scheme      = "test:", 0
+protocol_info        = "Test protocol", 0
+star_urlprotoshow    = "URLProtoShow", 0
+
+        ALIGN
+read_buffer          %       64
+body_buffer          %       512
+quick_buffer         %       256
+compose_full         %       256
+parse_sizes          %       parse_components_words * 4
+parse_ptrs           %       parse_components_words * 4
+parse_output_storage %       parse_output_storage_words * 4
+compose_block        %       parse_components_words * 4
+
+        GET     s._args_common
+
+        END

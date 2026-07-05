@@ -1,0 +1,4 @@
+interface:
+  display_name: "RISC OS Commands"
+  short_description: "Work with RISC OS command-line syntax."
+  default_prompt: "Use $riscos-commands to write or review RISC OS *Commands, Obey files, or .robuild.yaml commands."

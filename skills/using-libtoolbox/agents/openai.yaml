@@ -1,0 +1,4 @@
+interface:
+  display_name: "Using Toolbox"
+  short_description: "Use Toolbox veneers, objects, and gadget APIs correctly."
+  default_prompt: "Use $using-libtoolbox when working with RISC OS Toolbox headers, objects, methods, events, or gadget modules."

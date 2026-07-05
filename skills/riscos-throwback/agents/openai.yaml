@@ -1,0 +1,4 @@
+interface:
+  display_name: "RISC OS Throwback"
+  short_description: "Integrate DDEUtils Throwback reporting."
+  default_prompt: "Use $riscos-throwback to add or debug Throwback support for RISC OS tools."

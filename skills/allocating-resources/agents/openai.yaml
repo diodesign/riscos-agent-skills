@@ -1,0 +1,4 @@
+interface:
+  display_name: "Allocating Resources"
+  short_description: "Register RISC OS allocations correctly."
+  default_prompt: "Use $allocating-resources to register a RISC OS module name, SWI chunk, command, filetype, or other allocation."

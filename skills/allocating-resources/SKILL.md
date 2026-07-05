@@ -1,6 +1,8 @@
 ---
 name: allocating-resources
 description: Guidance for registering RISC OS allocations with the RISC OS Open allocation service. Use when the user wants to register a module name, SWI chunk, error block, *command, filetype, system variable, or any other RISC OS allocation. Also use when the user asks "how do I register X", "I need to allocate X", or wants to send an allocation request to RISC OS Open.
+metadata:
+  author: gerph@gerph.org
 license: MIT
 ---
 
@@ -13,7 +15,10 @@ authors. The allocation service is run by RISC OS Open.
 
 - **Allocation email address**: `allocate@riscosopen.org`
 - **Preferred method**: Use the `!Allocate` desktop application to create a structured request
-  file, then attach it to an email. Since `!Allocate` cannot be run in this environment,
+  file, then attach it to an email. Since `!Allocate` cannot be run in the RISC OS Build environment,
+  a tool `riscos-allocate` can be used which allows an allocation file to be constructed, which
+  can be sent by email.
+- **Alternative method**: If requested, or the `riscos-allocate` tool is not available, you should
   send an email directly describing the resources needed.
 - **When to allocate**: Before publicly releasing any software that uses the resource.
 
@@ -56,6 +61,9 @@ Ask for, or read from context:
 - The user's full name
 - The user's email address
 
+For the allocation tool, this information is required. The full developer address, etc is not
+required, but may be useful.
+
 These are needed for the `From:` header and the closing signature.
 
 ### 4. Compose the email
@@ -72,6 +80,101 @@ Subject: <brief description of the allocation request>
 -- 
 <Full Name>
 ```
+
+#### Binary allocation file construction
+
+If the user wants a structured Allocate request file, create a YAML description
+for `riscos-allocate` first, then convert it to the native `,fb0` request file.
+Keep the YAML as the editable source form and generate the binary file from it.
+
+The YAML always contains:
+
+- `SchemaVersion`
+- `FormatVersion`
+- `Developer`
+- `Registrations`
+
+The `Developer` mapping should contain the requestor details. Unknown details
+may be left as `null`. The `Registrations` sequence contains one mapping per
+allocation request.
+
+Minimal example for a simple module-name reservation:
+
+```yaml
+SchemaVersion: 1
+FormatVersion: 1.00
+Developer:
+  Name: Example Developer
+  Company: null
+  DeveloperNumber: null
+  Address1: null
+  Address2: null
+  Address3: null
+  Address4: null
+  Phone: null
+  Fax: null
+  Email: example@example.invalid
+Registrations:
+  - Reservation:
+      Type: ModName
+      Text: ExampleModule
+```
+
+Example for a module which needs a module name, SWI chunk, error block, and a
+star command:
+
+```yaml
+SchemaVersion: 1
+FormatVersion: 1.00
+Developer:
+  Name: Example Developer
+  Company: Example Software
+  DeveloperNumber: null
+  Address1: null
+  Address2: null
+  Address3: null
+  Address4: null
+  Phone: null
+  Fax: null
+  Email: example@example.invalid
+Registrations:
+  - Reservation:
+      Type: ModName
+      Text: ExampleModule
+  - SWIChunk:
+      Prefix: ExampleModule
+      Description: SWIs for the ExampleModule module
+  - ErrorBlock:
+      Description: Error numbers for the ExampleModule module
+  - Reservation:
+      Type: StarComm
+      Text: ExampleStatus
+```
+
+For filetype allocations, attachments may be embedded in the YAML as text or
+base64, or referred to by sibling filenames using the detached-file form that
+`riscos-allocate --extract-files` produces.
+
+Convert the YAML to a binary Allocate request with:
+
+```text
+riscos-allocate --create request.yaml -o request,fb0
+```
+
+Attach the resulting `,fb0` file to the email. Also include the plain-text
+request in the body so that the allocation team can understand the request
+without opening the attachment.
+
+Keep both the YAML file and the generated binary file for the user unless they
+explicitly ask for a transient output.
+
+Not all details fit naturally in the Allocate file format. If any important
+context, rationale, or constraints are not represented in the binary request,
+state them explicitly in the plain-text email body.
+
+#### Plain text construction
+
+When building the email as text, construct the mail like this:
 
 **Subject line**: Keep it short and factual. Describe what is being requested.
 Examples:

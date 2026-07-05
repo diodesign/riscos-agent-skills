@@ -1,7 +1,10 @@
 ---
 name: porting-to-riscos-c
 description: Port C projects to RISC OS using `riscos-cport`, RISC OS makefiles, and Norcroft/RISC OS build validation. Use when a repository needs a RISC OS library or command-line port, especially when you need to create a `RISCOS/` tree, generate `Makefile,fe1` files, or repair source for the RISC OS toolchain.
+metadata:
+  author: gerph@gerph.org
 license: MIT
+allowed-tools: Bash(riscos-cport:*) Bash(riscos-amu:*)
 ---
 
 # Porting To RISC OS C

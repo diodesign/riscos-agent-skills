@@ -1,0 +1,4 @@
+interface:
+  display_name: "Writing Assembly Tests"
+  short_description: "Build ObjAsm testcode exercisers."
+  default_prompt: "Use $writing-assembly-tests to create or update a Pyromaniac assembly test tool under testcode/s and wire it into the test harness."

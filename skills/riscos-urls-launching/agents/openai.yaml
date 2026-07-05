@@ -1,0 +1,4 @@
+interface:
+  display_name: "RISC OS URL Launching"
+  short_description: "Launch RISC OS URLs via AcornURI or ANT."
+  default_prompt: "Use $riscos-urls-launching to launch a URL from RISC OS code or a desktop application."

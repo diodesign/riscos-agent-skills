@@ -1,7 +1,10 @@
 ---
 name: riscos-re
 description: Reconstruct functionality, interfaces, and state machines from RISC OS module binaries. Use when you need to understand how an existing RISC OS module works or reimplement it in C.
+metadata:
+  author: gerph@gerph.org
 license: MIT
+allowed-tools: Bash(riscos-dump:*) Bash(riscos-dumpi:*)
 ---
 
 # RISC OS Reverse Engineering (riscos-re)

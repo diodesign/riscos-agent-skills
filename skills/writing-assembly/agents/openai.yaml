@@ -1,0 +1,4 @@
+interface:
+  display_name: "Writing Assembly"
+  short_description: "Write ARM assembly for RISC OS."
+  default_prompt: "Use $writing-assembly to write a small RISC OS ObjAsm or ARM assembly segment."

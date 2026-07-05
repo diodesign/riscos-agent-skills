@@ -1,0 +1,4 @@
+interface:
+  display_name: "ToolTester"
+  short_description: "Work with riscos-tooltester test suites."
+  default_prompt: "Use $using-tooltester to create, run, or diagnose a riscos-tooltester test suite."

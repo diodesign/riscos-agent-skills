@@ -1,0 +1,4 @@
+interface:
+  display_name: "RISC OS Wimp Applications"
+  short_description: "Structure and package RISC OS desktop Wimp applications."
+  default_prompt: "Use $riscos-wimp-app together with $riscos-wimp to create or restructure a packaged RISC OS desktop application."

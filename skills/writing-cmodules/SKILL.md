@@ -1,9 +1,29 @@
 ---
 name: writing-cmodules
 description: Development notes and procedures for working with RISC OS modules. Describes the layout of the project, how to build and tests, common patterns with SWIs and Vectors. Use when creating RISC OS modules, creating SWI implementations, claiming vectors, or writing service handlers.
+metadata:
+  author: gerph@gerph.org
 license: MIT
+allowed-tools: Bash(riscos-project:*) Bash(riscos-cmunge:*) Bash(riscos-amu:*) Bash(riscos-build-run:*)
 ---
 # C modules
+
+## Agent guidance
+
+Always use the `writing-c` skill when using this skill, as it includes fundamentals
+which are not stated here.
+
+When the user or the existing code structure points at a specific layer for the
+work, start there and exhaust that path before changing outer plumbing. For
+example, if the request is to implement logic in a helper such as
+`c/conversion`, do that first and keep `c/module`, CMHG veneers, SWI claiming,
+and registration code unchanged unless the target layer clearly cannot satisfy
+the request.
+
+Do not let a runtime symptom in a test environment pull you into unrelated
+module scaffolding too early. A missing feature result from a test should first
+be checked against the intended implementation layer, not assumed to require
+changes to SWI registration, claiming, or veneer wiring.
 
 ## Module Structure
 
@@ -40,338 +60,65 @@ A RISC OS module requires three essential components:
 
 If the service handler or SWI handler is not required, it can be omitted, and the CMHG entry commented out.
 
+CMHG service handlers have this C signature:
+
+```c
+void Mod_Service(int service, _kernel_swi_regs *r, void *pw);
+```
+
+Declare the service list in `cmhg/modhead` with `service-call-handler:`. For cache invalidation based on display or palette state, common services include `Service_ModeChanging`, `Service_SwitchingOutputToSprite`, and `Service_DisplayChanged`.
+When porting an assembler module, preserve the original service-call register contract explicitly. If the original service path consumes values from `R0`-`R7`, thread those values through the C interface deliberately instead of discarding them in a simplified wrapper.
+
 3. **Makefile** (`Makefile,fe1`) - Build configuration using AMU (RISC OS make)
+   - See the `using-makefiles` skill if you need more information on this.
 
 For more information about the CMHG file format, a blank template can be generated for reference with `riscos-cmunge -blank blank`. Do not commit the template file read in this way - always change the module header. See the `using-cmhg` skill for more information.
 
 When editing the CMHG file or Makefiles, retain the commented lines to help guide future authors.
 
-### File Naming Conventions
 
-- C source files: `c/<name>` (no extension in filename, but `#include` uses `.h`)
-- C header files: `h/<name>` (no extension in filename)
-- Makefiles: `Makefile,fe1` (comma suffix is RISC OS file type)
-- BBC BASIC files: `<name>,fd1`
-- Built modules: `rm32/<name>,ffa` (32-bit RAM module)
+## Module finalisation
 
-In the filesystem:
+`Mod_Final()` must release resources in reverse order of creation, clear global
+state, and only report an error when shutdown genuinely has to be prevented.
+If finalisation returns an error, the kernel may call it again, so it must be
+repeatable and safe after partial cleanup.
 
-**Wrong**:
-* `c/name.c`
-* `h/name.h`
+Read `references/finalisation-and-errors.md` for detailed finaliser patterns,
+error-block examples, and the `o.modhead` linker pitfall.
 
-**Correct**:
-* `c/name`
-* `h/name`
+## SWI interface
 
+* SWIs are numbered relative to the chunk base declared in `cmhg/modhead`.
+* Read the generated `h/modhead` header before changing a handler signature.
+* Decode register values into typed locals in `c/module`; do not pass raw
+  `_kernel_swi_regs` deeper into the implementation.
+* Prefer dedicated SWI handlers over one central dispatcher unless every SWI
+  genuinely shares the same register contract.
+* Unknown SWIs returned from `Mod_SWI()` must return `error_BAD_SWI`.
+* Use XSWIs internally so errors are returned explicitly instead of raising.
 
-## Module Finalisation
+Read `references/swi-interface.md` for `swi-decoding-table` syntax, naming
+pitfalls, handler signatures, and the XSWI convention.
 
-### Mod_Final Function
+## Module restrictions
 
-The `Mod_Final()` function is called when the module is killed (unloaded). Ensure all resources are cleaned up:
+* Floating point should not be used in modules - if it is *required*, then refer to the `using-libasm` skill for details of the `fpsvc` functions.
+* `exit()`, `assert()` and `about()` must never be used in modules.
 
-```c
-_kernel_oserror *Mod_Final(int fatal, int podule_base, void *pw)
-{
-    dprintf("Module JUnitXML dying\n");
 
-    // Finalise the state manager - closes files, frees memory
-    junit_state_final();
+## Memory and private word
 
-    return NULL;
-}
-```
+Use ordinary C globals and heap allocation for module state. Pass `pw` back to
+interfaces that require a private word, but never dereference it or overwrite
+it when using the Shared C Library.
 
-Only report errors if shutdown is being prevented, and never leave the module in an inconsistent state - if an
-error is returned, the finalisation code will be called again and must never crash.
+If the original source used conditional assembly switches, preserve them as
+named `#if` or `#ifdef` options instead of collapsing the behaviour into one
+path.
 
-### State Finaliser Pattern
-
-The state finaliser should clean up in reverse order of creation:
-
-```c
-int junit_state_final(void)
-{
-    junit_handle_t *h, *next_h;
-
-    // Iterate through all handles
-    for (h = junit_global.handles; h != NULL; h = next_h) {
-        next_h = h->next;
-        free_handle(h);
-    }
-
-    // Clear global state
-    junit_global.handles = NULL;
-    junit_global.next_handle_id = 0;
-
-    return 0;
-}
-
-static void free_handle(junit_handle_t *h)
-{
-    if (h == NULL) {
-        return;
-    }
-
-    // Free filename string
-    junit_strfree(&h->filename);
-
-    // Close file if open
-    if (h->fp != NULL) {
-        fclose(h->fp);
-        h->fp = NULL;
-    }
-
-    // Free all test suites
-    junit_testsuite_t *ts, *next_ts;
-    for (ts = h->suites; ts != NULL; ts = next_ts) {
-        next_ts = ts->next;
-        free_testsuite(ts);
-    }
-
-    // Free handle structure
-    free(h);
-}
-```
-
-### Key Points
-
-1. **Close files** - Use `fclose()` for any open `FILE *` pointers
-2. **Free memory** - Free all `malloc()`'d memory
-3. **Clear state** - Reset global variables to initial state
-4. **Handle errors gracefully** - Finalisation should not fail unless there is a resource lock preventing it.
-
-## SWI Interface
-
-* SWIs are numbered relative to a base chunk. Find the SWI numbers for the module you are writing in the `h/modhead` header.
-* Always look at the `h/modhead` file to find the signature for the SWI handlers.
-* The SWI handler receives registers through a structure:
-
-### SWI Decoding Table
-
-The `swi-decoding-table` in `cmhg/modhead` maps SWI names to handler functions.
-
-**Format**:
-
-```cmhg
-swi-decoding-table: <prefix> <name1>/<handler1> <name2>/<handler2> ...
-```
-
-**Example**:
-
-```cmhg
-swi-decoding-table: JUnitXML Create/SWI_Create TestSuite/SWI_TestSuite TestCase/SWI_TestCase Close/SWI_Close
-```
-
-This creates:
-- `JUnitXML_Create` → `SWI_Create()`
-- `JUnitXML_TestSuite` → `SWI_TestSuite()`
-- `JUnitXML_TestCase` → `SWI_TestCase()`
-- `JUnitXML_Close` → `SWI_Close()`
-
-**Centralised handler**
-
-When using a centralized `Mod_SWI` dispatcher, list your SWIs in the `swi-decoding-table` without the `/handler` suffix. This tells CMHG to pass all calls to the main dispatcher rather than looking for individual C functions. The single centralised handler should be avoided unless all SWI calls share common register bindings - in all other cases, multiple handlers should be used.
-
-
-### Handling unknown SWIs
-*  If your `Mod_SWI` handler receives a SWI number it doesn't recognize, it **must** return the special constant `error_BAD_SWI`, which is defined in the generated CMHG header file.
-
-### Common Mistake - Name Duplication
-
-**Wrong:**
-```cmhg
-swi-decoding-table: JUnitXML JUnitXML_Create/SWI_Create
-```
-This creates `JUnitXML_JUnitXML_Create` (prefix is prepended to the name).
-
-**Correct:**
-```cmhg
-swi-decoding-table: JUnitXML Create/SWI_Create
-```
-This creates `JUnitXML_Create`.
-
-All the SWI handlers take the same form:
-
-```c
-_kernel_oserror *SWI_Handler(int swi, _kernel_swi_regs *r, void *pw)
-{
-    ...
-}
-```
-
-SWI handlers should decode their parameters from registers into typed variables before passing the values to other
-implementation functions. They should not pass in the `_kernel_swi_regs` outside the module interface C file (eg they
-should pass parameters to hardware, or implementation functions as typed values).
-
-### X-SWI Convention
-
-For error handling, RISC OS uses the convention:
-
-- Standard SWI: Reports an error through the error handler
-- X-prefix: Sets V flag on error, error block pointer in R0.
-- Within modules, you should always call SWIs with the X-prefix and examine or return errors.
-- In BASIC test code, use standard SWI calls unless the error is explicitly being checked.
-
-```basic
-REM BBC BASIC - use X-SWIs for error handling
-SYS "XTimer_ReturnNumber", 0 TO r0%,r1%,r2%;flags%
-IF flags% AND 1 THEN
-  error_num% = r0%!0 : REM Error number at R0+0
-  PRINT "Error returned: &";~error_num%
-ELSE
-  PRINT "Timers count: ";r0%
-ENDIF
-```
-
-### SWI Names
-
-* SWI names follow the pattern `<Module>_<Function>` with PascalCase, for example `Timer_ReturnNumber`
-* The X-prefixed SWIs are automatically handled by the Kernel, and do not need to be registered.
-* CMHG may be used to register the SWI names.
-* SWI names are defined in the header `swis.h`.
-
-## C Coding Standards
-
-* Floating point should not be used in modules.
-* Don't leave trailing spaces on files.
-* 4 character indents.
-* Magic numbers and strings (bare numbers and strings in the code) should be avoided.
-    * Use `enum` if you need to enumerate a set of values like state values.
-    * Use `#define` for values like bit-fields and constant strings.
-
-### No Threading
-
-RISC OS is single-threaded. Do not use threading or assume re-entrancy.
-
-## Memory Management
-
-### Private memory
-
-Memory for the module is managed by standard `malloc`, `free`, `realloc` and `calloc` calls.
-Under RISC OS 3.1, `realloc` was not functional and must not be used. Modules should not target RISC OS 3.1
-unless explicitly directed to do so.
-
-Otherwise, the module can use global and local variables as they would in any other program.
-
-### Private Word
-
-* The `pw` parameter in init/final/handler is a module-private workspace pointer.
-* The private word should be passed to any calls to `OS_Claim`, `OS_Release`, `OS_AddCallback`
-  and other interfaces that require a private word.
-* The private work should never be dereferenced.
-
-### Common errors
-
-A common pitfall in C module implementation is the misuse of the **Private Word** (`pw`).
-
-*   **The Mandate**: In a C module using the Shared C Library, **never** overwrite the private word (e.g., `*((ModuleWorkspace **)pw) = ws;`). The SCL uses the private word to store the relocation address of your module's static data.
-*   **The Consequence**: Overwriting this pointer destroys the SCL's workspace, leading to immediate data aborts (often in `__filbuf` or `_sys_read`) when calling standard C functions like `fopen` or `printf`.
-*   **The Solution**: Use standard C global variables for module state. The SCL handles the relocation of these globals automatically.
-
-
-## Error Handling
-
-RISC OS error blocks have a fixed structure:
-
-```c
-typedef struct _kernel_oserror_s {
-    int errnum;        /* Error number */
-    char errmess[252]; /* Error message */
-} _kernel_oserror;
-```
-
-### Error Identifiers
-
-Define error blocks in `cmhg/modhead` using the `error-identifiers` directive. Errors are automatically numbered sequentially from the `error-base`:
-
-```cmhg
-error-base: &840000
-
-error-identifiers: \
-    Err_CreateFailed("Failed to create JUnitXML handle"),
-    Err_CreateSuiteFailed("Failed to create test suite"),
-    Err_CloseSuiteFailed("Failed to close test suite"),
-    Err_BadOp(&12e, "Unknown operation")
-```
-
-This generates error blocks with sequential numbers:
-- `Err_CreateFailed` - error number &840000
-- `Err_CreateSuiteFailed` - error number &840001
-- `Err_CloseSuiteFailed` - error number &840002
-- `Err_BadOp` - error number &12e
-
-If the error is static, it MUST be defined within the CMHG file. Only if the error contains dynamic information should the error block be stored in the module global workspace. These symbols will be `#define`'d to hide their internal implementation - the actual symbol in the object file looks like `__err_Err_Name`.
-
-Standard error numbers and strings are defined in the header `riscos/NewErrors.h`.
-
-
-### Using Error Blocks in C Code
-
-The generated header (`h/modhead`) provides error block pointers that can be returned directly from SWI handlers:
-
-```c
-#include "modhead.h"
-
-_kernel_oserror *SWI_Create(int number, _kernel_swi_regs *r, void *pw)
-{
-    int handle = junit_create(filename, flags);
-
-    if (handle < 0) {
-        return Err_CreateFailed;  // Returns pointer to error block
-    }
-
-    r->r[0] = handle;
-    return NULL;
-}
-```
-
-### Using error enumerations
-
-When a library returns an error number from an enumeration, these must be converted
-into RISC OS errors. Always convert them to individual error blocks defined in the
-CMHG file. Create a function which converts the status code to a suitable error.
-
-**Wrong**
-```c
-if (status != MOD_OK)
-   return err_FileNotFound;
-```
-
-**Correct**
-```c
-if (status != MOD_OK)
-   return convert_status_to_error(status);
-```
-
-
-### Benefits of CMHG Error Blocks
-
-1. **Efficiency** - Error blocks are pre-allocated in the module image
-2. **Consistency** - Error numbers are automatically assigned
-3. **Maintainability** - Error messages are defined in one place
-4. **Type safety** - Compiler checks error block references
-
-### Implementation Pitfall
-The standard practice is to use the macros defined in the generated header:
-```c
-#include "modhead.h"
-...
-return Err_NotRegistered; // Returns a pointer to an OS error block
-```
-**Problem found**: If you get undefined symbols during linking like `__err_Err_NotRegistered`, it usually means `o.modhead` is missing from the `OBJS` list in your `Makefile`.
-
-
-## Time Handling
-
-### RISC OS Quin Format
-
-RISC OS time is stored as either a **quin** or a **5-byte time**.
-This is a 5-byte (40-bit) little-endian value representing centiseconds since 1900-01-01 00:00:00 UTC.
-
-* Conversion to strings can be performed using the SWI `Territory_ConvertDateAndTime`.
-* The 5-byte value can be converted to date and time values with the SWI `Territory_ConvertTimeToOrdinals`
+Read `references/finalisation-and-errors.md` for the private-word trap,
+CMHG-generated error blocks, and time-format notes.
 
 
 ## Build System
@@ -402,10 +149,11 @@ If a new header file like `h/os` is created, it would be included with `#include
 ${OZDIR}.hardware: h.os
 ```
 
+More information about the use of makefiles can be obtained with the `using-makefiles`
 
 ### Build Targets
 
-- `riscos-amu` or `riscos-amu ram` - Build RAM module
+- `riscos-amu` or `riscos-amu ram` - Build absolutes or RAM module
 - `riscos-amu rom` - Build ROM module
 - `riscos-amu BUILD26=1` - Build 26-bit compatible version
 - `riscos-amu BUILD64=1` - Build 64-bit version
@@ -414,60 +162,24 @@ ${OZDIR}.hardware: h.os
 
 ### Output Directories
 
-- `oz32/` - 32-bit object files for modules
-- `rm32/` - 32-bit modules (RAM)
-- `aof32/` - 32-bit AOF files (ROM)
-- `oz64/` - 64-bit object files for modules
-- `rm64/` - 64-bit modules (RAM)
+Suffix `z` means 'for modules'; no `z` means 'for application'.
+Suffix `32` for 32-bit.
+Suffix `64` for 64-bit.
+No number suffix for 26-bit (obsolescent).
+
+- `o` - object directory.
+- `aif` - AIF, application executable.
+- `rm` - modules (RAM).
+- `aof` - AOF files (ROM).
 
 ## Testing
 
-### Loading Modules
+Use a small BASIC smoke test first, then make it repeatable through a project
+`test` target. Keep the host filename and the guest leaf name distinct so the
+module and the BASIC file cannot collide inside `riscos-build-run`.
 
-```basic
-* `*RMLoad rm32.MODULE`: Load module
-* `*RMKill MODULE`: Unload module
-```
-
-### BASIC Testing
-
-Use SYS calls from BBC BASIC:
-
-```basic
-REM Standard SWI (error raises BASIC error)
-SYS "Timer_ReturnNumber", 0 TO ,,,num_timers%
-
-REM X-SWI (check flags for errors)
-SYS "XTimer_Claim", 0, 0, 1000, 0 TO r0%,r1%,rate%;flags%
-IF flags% AND 1 THEN
-  error_num% = r0%!0
-ENDIF
-```
-
-It is redundant to use X-SWIs and raise errors if nothing is being handled.
-
-**Wrong**:
-```basic
-SYS "XModule_Parse", file$ TO h%; flags%
-IF (flags% AND 1) THEN SYS "OS_GenerateError", h%
-```
-
-**Correct**:
-```basic
-SYS "Module_Parse", file$ TO h%
-```
-
-This implicitly raises the error.
-
-### Build Testing
-
-```bash
-riscos-build-run rm32 test_MODULE,fd1 \
-  --command "*RMLoad rm32.MODULE" \
-  --command "run test_MODULE,fd1"
-```
-
-Note: The `--command` argument takes RISC OS commands, NOT BASIC commands.
+Read `references/testing.md` for example `SYS` calls, `riscos-build-run`
+invocations, 64-bit limitations, and the leaf-name collision pitfall.
 
 ## Debugging
 
@@ -519,88 +231,8 @@ Use `riscos-project create-ci` to create these files for the current project.
 
 ### Claiming vectors
 
-Vector claims are usually done in the module initialisation code. They must be released on module finalisation.
+Vector claims are usually done in the module initialisation code. They must be released on module finalisation. See the skill `using-cmhg` for details on claiming vectors.
 
-In these examples the vector example is `ReadLineV`.
-
-In the Module initialisation function add a call to the vector claims, like this:
-
-```c
-_kernel_oserror *err;
-err = vector_claims(pw);
-if (err)
-    goto failed;
-```
-
-In the Module finalisation function release the vector claims, like this:
-
-```c
-vector_releases(pw);
-```
-
-All vector management should be performed in the C file `c/vector`.
-
-Vector numbers are defined in the include file `riscos/Vectors.h`.
-
-Implement the claims in the `vector_claims` function, and the releases in `vector_releases` with code like this:
-
-```c
-#include "riscos/Vectors.h"
-
-_kernel_oserror *vector_claims(void *pw)
-{
-    _kernel_oserror *err;
-
-    err = os_claim(ReadLineV, ReadLineV_Entry, pw);
-    return err;
-}
-_kernel_oserror *vector_releases(void *pw)
-{
-    _kernel_oserror *err;
-    err = os_release(ReadLineV, ReadLineV_Entry, pw);
-    return err;
-}
-```
-
-The `os_claim` and `os_release` functions should be defined in the `c/os` file, like this:
-
-```c
-#include "swis.h"
-
-_kernel_oserror *os_claim(int vector, void (*func)(void), void *pw)
-{
-    _kernel_oserror *err;
-    err = _swix(OS_Claim, _INR(0,2),
-                          vector, func, pw);
-    return err;
-}
-
-_kernel_oserror *os_release(int vector, void (*func)(void), void *pw)
-{
-    _kernel_oserror *err;
-    err = _swix(OS_Release, _INR(0,2),
-                           vector, func, pw);
-    return err;
-}
-```
-
-Update the CMHG header file to add a `vector-handler` entry:
-
-```
-vector-handlers: ReadLineV_Entry/ReadLineV_Handler(error-capable:)
-```
-
-The handler for the vector should be implemented in a separate file, and has a prototype that looks like this:
-
-```
-int ReadLineV_Handler(_kernel_swi_regs *regs, void *pw)
-{
-    /* Decode registers into typed values, validate and call implementation function */
-    return VECTOR_PASSON;
-}
-```
-
-Watch out for recursion. For example, using `OS_Write*` or `printf` within `WrchV` will create a recursive loop.
 
 ### Generic veneers
 
@@ -609,53 +241,23 @@ Many modules (CDFSDriver, SCSI, etc.) require passing entry point addresses to t
 Other interfaces, like timed events (`OS_CallAfter`, `OS_CallEvery`) have a similar entry point.
 
 **Implementation**: Use the addresses of CMHG-generated generic veneers, not the raw C functions.
+
 ```c
 /* In Mod_Register */
 CDFS_DIB *dib = (CDFS_DIB *)r->r[0];
 dib->msf_to_lba_fn = (int)Entry_MSFToLBA_Veneer; // Address of the veneer
 ```
+
 or
+
 ```c
 _swix(OS_CallAfter, _INR(0,2), 10, Entry_Tick_Veneer, pw); // Veneer address.
 ```
 
-This ensures the C environment (relocation, static base) is correctly initialized when the function is called from external assembly or the OS.
+This ensures the C environment (relocation, static base) is correctly initialized when the function is called from external assembly or the OS. More information on the
+patterns used for generic geneers can be found in the skill `using-cmhg`.
 
 
-## CMHG style guidelines
-
-* Don't remove the comment sections that describe the file. They are useful for humans to know how to add new sections.
-* Any definition which may be split across lines if the definition is incomplete. For example, a list of SWIs like:
-
-```
-swi-decoding-table: JUnitXML Create/SWI_Create TestSuite/SWI_TestSuite TestCase/SWI_TestCase Close/SWI_Close
-```
-
-Can be comma separated, thus:
-
-```
-swi-decoding-table: JUnitXML Create/SWI_Create, TestSuite/SWI_TestSuite, TestCase/SWI_TestCase Close/SWI_Close
-```
-
-And the comma separated parts can be split if the comma is the last entry on the line:
-
-```
-swi-decoding-table: JUnitXML Create/SWI_Create,
-                             TestSuite/SWI_TestSuite,
-                             TestCase/SWI_TestCase,
-                             Close/SWI_Close
-```
-
-Which makes for nice aligned text.
-
-* If services are required for the module, use the symbolic names where possible from the include file `riscos/Services.h`.
-  This can be included using C preprocessor includes, like this:
-
-```
-#include "riscos/Services.h"
-
-service-call-handler: Mod_Service Service_ModeChange
-```
 
 ## Module Testing Strategies
 
@@ -663,6 +265,7 @@ service-call-handler: Mod_Service Service_ModeChange
 A simple BASIC script is the most effective way to test a new module. Use the skill `using-bbcbasic` if you need to work with BASIC.
 
 **Example: Testing a complex SWI (CD_DriveStatus)**
+
 ```bbcbasic
 REM Passing a pointer in R7
 DIM control_block% 20
@@ -676,6 +279,7 @@ PRINT "Status is: "; status%
 
 ### Verifying Version Blocks
 If your SWI returns a pointer to a block of data:
+
 ```bbcbasic
 SYS "CD_Version" TO v%
 PRINT "Version word: "; v%!0
@@ -694,10 +298,11 @@ DEFFNstring0(p%):LOCAL s$:SYS "OS_IntOn",p% TO s$:=s$
 
 ## Resources
 
-- [RISC OS PRM - Software Interrupts](https://www.riscos.info/modules/)
-- [CMHG Documentation](https://www.riscos.info/modules/cmhg.htm)
-- [PRM 1-26 - SWI Chunk Allocation](https://www.riscos.info/modules/)
+- [RISC OS PRM - Introduction to SWIs](https://www.riscos.com/support/developers/prm/swis.html)
+- [CMHG Documentation](https://www.riscos.com/support/developers/c/writerm.html)
 
 - Manager modules may need to announce that they are starting up and shutting down. Usually services are issued for these events. The module announcements pattern can be found here [references/module-announcements.md](references/module-announcements.md).
 
 - Licenses and authorship may be announced with the module acknowledgements service. Adding this service can be achieved by following the [module acknowledgements pattern](references/module-acknowledgements.md).
+
+- Modules which need to replace OS functionality may claim those `OS_*` SWI calls through `OS_ClaimOSSWI`. More information on this can be found at [claiming-os-swis](references/claiming-os-swis.md).

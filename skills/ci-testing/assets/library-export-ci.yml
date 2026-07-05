@@ -1,0 +1,75 @@
+---
+name: {{WORKFLOW_NAME}}
+
+on:
+  push:
+    branches: ["*"]
+    tags: ["v*"]
+  pull_request:
+    types: [opened, reopened, synchronize]
+    branches: ["*"]
+
+jobs:
+  build-riscos:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    concurrency:
+      group: riscos-build-server
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      leafname: ${{ steps.version.outputs.leafname }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Obtain prerequisite build tool
+        run: |
+          curl -s -L -o riscos-build-online https://github.com/gerph/robuild-client/releases/download/v0.07/riscos-build-online
+          chmod +x riscos-build-online
+
+      - name: Build through build.riscos.online
+        run: |
+          zip -q9r /tmp/source-archive.zip {{SOURCE_ARCHIVE_FILES}} .robuild.yaml
+          ./riscos-build-online -i /tmp/source-archive.zip -a off -t 60 -o /tmp/built
+
+      - name: Give the output a versioned name
+        id: version
+        run: |
+          if [ -f {{VERSION_FILE}} ] ; then
+              version=$(awk -F'"' '/^#define Module_FullVersion[[:space:]]+"/ { print $2; exit }' {{VERSION_FILE}})
+          else
+              version=$(git rev-parse --short HEAD)
+          fi
+          leafname="{{ARCHIVE_STEM}}-$version.zip"
+          if [ -f /tmp/built,a91 ] ; then
+              cp /tmp/built,a91 "$leafname"
+          else
+              echo "No archive was built?"
+              exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "leafname=$leafname" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: {{ARTIFACT_NAME}}
+          path: ${{ steps.version.outputs.leafname }}
+
+  release:
+    needs: build-riscos
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+    steps:
+      - name: Download built RISC OS binary
+        uses: actions/download-artifact@v8
+        with:
+          name: {{ARTIFACT_NAME}}
+
+      - name: Create Release
+        uses: ncipollo/release-action@v1
+        with:
+          prerelease: false
+          draft: true
+          artifacts: "${{ needs.build-riscos.outputs.leafname }}"
+          artifactContentType: application/zip

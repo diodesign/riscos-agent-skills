@@ -1,0 +1,4 @@
+interface:
+  display_name: "Designing Modules"
+  short_description: "Design RISC OS module interfaces."
+  default_prompt: "Use $designing-modules to design or extend a RISC OS module interface."

@@ -1,7 +1,10 @@
 ---
 name: writing-pymodules
 description: Describes how to build and test PyModules (Python modules for RISC OS Pyromaniac). Use when understanding, updating or creating PyModules to implement a RISC OS module for Pyromaniac.
+metadata:
+  author: gerph@gerph.org
 license: MIT
+allowed-tools: Bash(riscos-run:*) Bash(riscos-basic:*) Bash(bash:*)
 ---
 # Pyromaniac
 
@@ -11,16 +14,44 @@ It has modules just like RISC OS, called PyModules.
 You can load a PyModule and test it with:
 
 ```
-host-run pyrodev --common --load-pymodule <pymodule-filename> --command '<riscos command>'
+riscos-run --load-pymodule <pymodule-filename> --command '<riscos command>'
+```
+
+You can also mix a PyModule with native RISC OS modules in the same run:
+
+```
+riscos-run --load-pymodule <pymodule-filename> \
+           --load-module <c-module>,ffa \
+           --command '<riscos command>'
+```
+
+`riscos-run` already loads the standard system module set (BASIC, SCL,
+FPEmulator, Obey) by default, so you do not need `--load-module` for those.
+If you want exact control over which modules are present instead of that
+default set, use the lower-level `pyro` command directly with
+`--load-internal-modules` (for OS commands such as `Basic`, `Dir`, or
+`Help`) and `$ROSYSMODULES` (the directory containing the shipped system
+modules) to load just what you need:
+
+```
+pyro --load-internal-modules --load-module $ROSYSMODULES/BASIC,ffa \
+     --command '<riscos command>'
 ```
 
 If you had a BASIC program you wanted to use to test your module you could use:
 
 ```
-host-run pyrodev --common --load-pymodule <pymodule-filename> --command 'Run <basic-filename>'
+riscos-run --load-pymodule <pymodule-filename> --command 'Run <basic-filename>'
 ```
 
 You cannot pass BASIC statements to the `--command` arguments.
+
+For tests, pass the host filename to `riscos-run`, and use the RISC OS
+filename in the command:
+
+```
+riscos-run --load-pymodule newmodule.py --command 'Run TestModule' TestModule,fd1
+```
 
 ---
 
@@ -39,6 +70,46 @@ While the `PyModule` system handles modular extensions, the core OS logic is imp
 - **`riscos/bufferdata.py`**: Provides interfaces for writing to user buffers, with tracking of overflow and maximum data sizes (used by interfaces like file enumeration).
 - **`riscos/swis/`**: Contains the SWI dispatchers. These often call into the core logic modules (like `readargs.py`).
 
+For ports of existing C modules, also check the exported interface files in `/riscos-resources/Export/`:
+
+- **`C/h/*SWIs`**: Usually defines the SWI numbers and register contracts.
+- **`Hdr/Interface/*`**: Usually defines the SWI chunk and public interface names.
+
+These exported files are often the quickest way to recover the exact module interface when the original source is incomplete or absent.
+
+Also check local documentation before implementing:
+
+- **`prminxml/`**: PRM-in-XML interface documentation. Prefer this for externally documented SWI contracts, error numbers, system variables, examples, and register preservation rules.
+- **`docs/`**, **`built/docs/`**, or similar documentation directories: These may contain generated HTML/XML manuals or older user-facing references.
+- **Existing examples/tests**: BASIC files such as `test*,fd1` often encode expected register values and edge cases.
+
+When new public interface documentation is needed for a PyModule or for behaviour discovered during a port, create or update the source documentation in `prminxml/`; generated documentation should be rebuilt from there rather than hand-edited.
+
+When porting from C, preserve observable C behaviour rather than only the apparent high-level intent:
+
+- Preserve register inputs that are needed after output registers are updated, such as buffer pointers and buffer lengths.
+- Match documented error numbers. PyModule errors can use explicit-number descriptors like `('BufferOverflow', 0x1e5, "Buffer overflow")`.
+- Use XSWI calls in tests for error returns, so tests can check the returned error block and any updated output registers.
+- Preserve C integer arithmetic where it affects matching or scoring. Python 2 integer division matches C integer division for integer operands; Python 3-style assumptions may change results.
+- If a SWI has a length-only mode, test both that mode and the buffer-writing path.
+
+When a PyModule is a compatibility layer over host services or Python standard
+library code, preserve the RISC OS-visible contract rather than mirroring the
+host API shape. In practice that means:
+
+- keep SWI names, register contracts, and session handles stable
+- translate host/library exceptions into the documented RISC OS error model
+- preserve response formats and status words expected by callers
+- test the public interface from BASIC, assembly, or `--command`, not only by
+  calling the Python helper methods directly
+
+When converting a PyModule to C:
+
+- Compare the PyModule's `swi_names` with these exported interface files and any PRM-in-XML documentation before accepting scaffolded CMHG names. Skeletons generated from incomplete type information may use a longer handler-oriented name, while the public SWI name in the PyModule and exported header is the compatibility contract.
+
+### Source code location
+
+If not supplied by the user, the sources for RISC OS Pyromaniac can be found at `/riscos-resources/Install/Tools/Linux/pyromaniac-resources`. This directory is only present when the Build Environment has been distributed with the Pyromaniac tool.
 
 ---
 
@@ -48,6 +119,9 @@ Pyromaniac uses **Python 2.7**, which has specific requirements:
 
 * Use inheritance from `object` on all classes which would otherwise not inherit.
 * `print` statements may have `(` around their parameters (this is safe in Python 2.7 and makes transition to Python 3 safer).
+* Use `super(ClassName, self)`, not Python 3 argument-less `super()`.
+* Do not use f-strings, keyword-only arguments, or Python 3 `bytes`/`str` assumptions.
+* Be careful with dictionary/set ordering in tests; Python 2.7 does not preserve insertion order.
 
 
 ## Error Handling
@@ -78,6 +152,15 @@ Error numbers are assigned sequentially from `error_base`:
 - `CreateSuiteFailed` - &840001
 - `CloseSuiteFailed` - &840002
 - etc.
+
+If a specific error number is documented, include it explicitly in the descriptor:
+
+```
+errors = [
+    ('BadFlags', "Reserved bits set"),
+    ('BufferOverflow', 0x1e5, "Buffer overflow"),
+]
+```
 
 ### Raising Errors
 
@@ -140,7 +223,7 @@ Which would provide one command.
 You could test it with a command like this:
 
 ```
-host-run pyrodev --common --load-pymodule newmodule.py --command 'TestCommand hello world'
+riscos-run --load-pymodule newmodule.py --command 'TestCommand hello world'
 ```
 
 ---
@@ -189,6 +272,8 @@ The SWI functions:
 * SWI parameters are passed in the `regs` array, and can be accessed using array syntax, eg `regs[0]`.
 * Signed values can be accessed using `regs.signed[0]`
 * Use dispatch dictionaries to determine the SWI methods to call, for speed.
+* If the original C interface compares a string parameter by pointer identity, preserve the raw register value as well as the decoded string. `self.ro.memory[regs[0]].string` gives you the text, but not the original pointer for identity comparisons.
+* If you are porting a module which depends on another module, keep the module boundary intact and call through the SWI interface rather than importing implementation details directly.
 
 The return from SWI calls has the following values:
 
@@ -212,175 +297,56 @@ ENDIF
 Then test the two together with a command like this:
 
 ```
-host-run pyrodev --common --load-pymodule newmodule.py --command 'Run TestModule'
+riscos-run --common --load-pymodule newmodule.py --command 'Run TestModule'
 ```
 
 ## Memory Access
 
-Pyromaniac provides convenient methods for reading from RISC OS memory via `self.ro.memory[address]`:
+Pyromaniac provides convenient access to RISC OS memory through `self.ro.memory[address]`.
 
-### Reading Strings
+Use [references/memory-and-io.md](references/memory-and-io.md) for:
 
-```
-# Read null-terminated string from memory
-filename_ptr = regs[1]
-filename = self.ro.memory[filename_ptr].string
-```
+- string, word, dword and byte access patterns
+- quin to datetime conversion
+- RISC OS file I/O through `self.ro.kernel.api.open`
+- SWI calling conventions and iterable `args`
 
-### Reading Quins (RISC OS Time)
-
-```
-# Read 5-byte quin (RISC OS time value)
-time_ptr = regs[5]
-quin = self.ro.memory[time_ptr].quin
-```
-
-### Reading Words
-
-```
-# Read multiple 32-bit words from memory
-ptr = regs[2]
-words = self.ro.memory[ptr].read_words(count)
-```
-
-### Single words
-
-```
-# Read a single 32-bit word from memory (unsigned)
-ptr = regs[2]
-word = self.ro.memory[ptr].word
-
-# Read a single 32-bit word from memory (signed)
-word = self.ro.memory[ptr].signedword
-
-# Write a single 32-bit word to memory
-self.ro.memory[ptr].word = word
-```
-
-### Double words (64-bit)
-
-```
-# Read a single 64-bit word from memory (unsigned)
-ptr = regs[2]
-dword = self.ro.memory[ptr].dword
-
-# Read a single 64-bit word from memory (signed)
-dword = self.ro.memory[ptr].signeddword
-
-# Write a single 32-bit word to memory
-self.ro.memory[ptr].dword = dword
-```
-
-### Bytes
-
-```
-# Read bytes from memory
-ptr = regs[3]
-data = self.ro.memory[ptr].read_bytes(length)
-
-# Writing bytes to memory
-self.ro.memory[ptr].write_bytes(data)
-```
-
-### Single byte
-
-```
-# Read byte from memory
-ptr = regs[3]
-data = self.ro.memory[ptr].byte
-
-# Writing byte to memory
-self.ro.memory[ptr].byte = data
-```
-
----
-
-## Time Conversion
-
-### Using quin_to_datetime
-
-The `riscos.rotime` module provides `quin_to_datetime()` for converting RISC OS time to Python datetime:
-
-```
-from riscos.rotime import quin_to_datetime
-
-# Read quin from memory
-quin = self.ro.memory[time_ptr].quin
-
-# Convert to datetime
-dt = quin_to_datetime(quin)
-
-# Format as ISO 8601
-timestamp = dt.strftime('%Y-%m-%dT%H:%M:%SZ')
-```
-
----
-
-## File I/O
-
-### Using ro.kernel.api.open
-
-**Never use Python's built-in `open()`** - it accesses the host filesystem, not the RISC OS filesystem.
-
-```
-# WRONG - uses host filesystem
-self.file = open(self.filename, 'w')
-
-# CORRECT - uses RISC OS filesystem
-self.file = self.ro.kernel.api.open(self.filename, 'w')
-```
-
-### File Operations
-
-```
-# Open file for writing
-self.file = self.ro.kernel.api.open(self.filename, 'w')
-
-# Write data
-self.file.write('<?xml version="1.0" encoding="UTF-8"?>\n')
-self.file.write('<testsuites>\n')
-
-# Flush to ensure data is written
-self.file.flush()
-
-# Close file
-self.file.close()
-```
-
-### File Modes
-
-Supported modes:
-- `'w'` - Write (create/truncate)
-- `'r'` - Read
-- `'a'` - Append
-- `'w+'` - Read/write (create/truncate)
-- `'r+'` - Read/write (existing file)
+Be careful with `read_words(size)` and `write_words(...)`: the `size` argument is a byte size, not a word count.
 
 
 ---
 
 ## Calls to SWIs
 
-SWIs can be called through the interfaces in `riscos/api/__init__.py` which is usually referenced as `self.ro.kernel.api`.
+SWIs can be called through `self.ro.kernel.api`.
 There are SWI interfaces present for most common SWIs.
 Output to the screen using `OS_Write*` SWIs can be achieved most efficiently by using:
 
 * `self.ro.kernel.write(str)` to write a string to the output.
 * `self.ro.kernel.writeln(str)` to write a string to the output followed by a newline.
 
-### Passing arguments to SWIs API
+When there is no convenience wrapper, use `self.ro.kernel.api.swi(<swi_number>, args=[...])` or `regs={...}` to call the SWI directly. This is also the preferred way for one PyModule to call another, as it preserves the real module interface boundary.
 
-When calling SWIs via `self.ro.kernel.api.swi(swi_number, args)`, the `args` parameter **must be an iterable** (tuple or list), even if passing only a single register value. Passing a single integer directly will result in a `TypeError: 'long' object is not iterable`.
+---
 
-- **Correct**: `self.ro.kernel.api.swi(swis.Hourglass_On, (r1,))`
-- **Incorrect**: `self.ro.kernel.api.swi(swis.Hourglass_On, r1)`
+## Service Calls
+
+PyModules can receive service calls through `service(self, service, regs)` and announce them through the Pyromaniac dispatcher.
+
+Use [references/service-announcements.md](references/service-announcements.md) for:
+
+- claiming a received service by returning `True`
+- issuing services with `self.ro.services.dispatch(..., preserve=True)`
+- deferring startup announcements with `OS_AddCallBack` and removing pending callbacks on finalisation
+
+If your module caches data derived from the current display or palette state, consider invalidating it on relevant services such as `Service_ModeChanging`, `Service_SwitchingOutputToSprite`, and `Service_DisplayChanged`.
 
 
 ---
 
 ## Custom Entry Points (Vectors & Callbacks)
 
-Beyond SWIs and Commands, PyModules can define custom entry points for use with vectors (e.g., `OS_Claim`) or callbacks.
+Beyond SWIs and Commands, PyModules can define custom entry points for use with vectors (e.g., `OS_Claim`) or as callable function addresses passed to clients.
 
 - **Definition**: Add the names to `entrypoint_names` in your class definition.
 - **Dispatch**: Implement a method with the same name. It will receive the `regs` object.
@@ -402,6 +368,40 @@ class MyModule(PyModule):
 ```
 
 If vectors are claimed this way, they must be released in the finalisation method.
+
+### Return convention: how `entrypoint_dispatch` returns
+
+Entry points have **two distinct return paths**:
+
+- **`return False`** (not claimed): Pyromaniac sets `regs.pc = regs.lr` — the standard
+  `MOV pc, lr` subroutine return. The OS vector dispatcher will call the next handler in
+  the chain.
+
+- **`return True`** (claimed): Pyromaniac pops the return PC from the stack:
+  `regs.pc = memory[regs.sp]; regs.sp += 4`. This mirrors the RISC OS convention where
+  the vector dispatcher pushes the original caller's return address before invoking the
+  chain, and a claiming handler returns through that pushed address.
+
+**When using OS vectors**, the OS manages the stack push automatically, so the Python handler
+does not need to worry about this.
+
+**When using an entry point as a custom function pointer** (e.g. a colour mapping descriptor,
+a callback passed directly to a client), the *caller* in ARM code must push the return address
+onto the stack before jumping to the entry point address. See
+[references/entrypoint-calling-convention.md](references/entrypoint-calling-convention.md) for
+the correct BASIC shim and full details.
+
+### R12 and module instance identification
+
+`entrypoint_dispatch` scans module instances looking for one whose `privateword_pointer.address`
+matches R12. If none matches, it falls back to the **preferred instance** (the most recently
+initialised instance). This means:
+
+- When used with `OS_Claim`, pass `self.pwp.address` as the R12 value (the third argument).
+- When used as a custom function pointer with a different R12 (e.g. a workspace pointer),
+  dispatch still succeeds as long as there is only one instance of the module loaded.
+- If the module may have multiple instances, store `self.pwp.address` in the descriptor's
+  workspace field and retrieve the actual workspace from the private word inside the handler.
 
 ---
 
@@ -444,113 +444,36 @@ When an entry point is used as a vector handler (e.g., via `OS_Claim`):
 
 ## Integration Tests
 
-PyModule tests live in `testcode/` and use a gold-master comparison approach. Run them with:
+PyModule tests live in `testcode/` and use a gold-master comparison approach.
+
+Run them with:
 
 ```
-bash run-tests <suite-name>
+make tests TEST=<suite-name>
 ```
 
-The log is written to `/tmp/pyro-tests-<suite-name>.log`. Read that file for detailed pass/fail output — do not re-run to inspect results.
+Use [references/testing-pymodules.md](references/testing-pymodules.md) for:
 
-### Test suite file format
+- suite file structure
+- parameterised tests
+- replacement scripts
+- expectation file creation
+- registering suites in `testcode/tests.txt`
 
-Each suite is a file `testcode/tests-<name>.txt`. The master list `testcode/tests.txt` includes them via `Include:` lines (add your new suite there, in alphabetical order within its section).
+For simple SWI smoke tests, a small BASIC file in `testcode/` is often the quickest validation path. Remember:
 
-A minimal suite file looks like:
-
-```
-#
-# SUT:    Extension Modules: MyModule
-# Area:   SWIs
-# Class:  Functional
-# Type:   Integration test
-#
-
-
-Group: MyModule: Basic operations
-
-Test: Init and reinit
-Command: $TOOL --load-internal-modules --command "RMReinit MyModule"
-Expect: expect/pymodules/mymodule/reinit
-
-Test: Help text
-Command: $TOOL --load-internal-modules --help-config mymodule.implementation
-Expect: expect/pymodules/mymodule/help_implementation
-```
-
-`$TOOL` is substituted with the pyro.py invocation. Standard options used in most suites:
-
-- `--load-internal-modules` — load all built-in modules
-- `--load-internal-group core` — load only the core group (faster for basic tests)
-- `--config key=value` — set a configuration value
-- `--set-variable "Name=value"` — set a RISC OS system variable
-- `--set-variable-encoded "Name:charset=value"` — set a variable with charset-encoded content
-- `--command 'RISC OS command'` — execute a command (may be repeated)
-- `--boot-debug <flag>` — enable a debug flag during boot
-
-### Parameterised tests
-
-Groups can share a command template, with each test supplying an `Args:` substitution (`$ARG1`, `$ARG2`, ...):
-
-```
-Group: MyModule: Operations
-
-Command: $TOOL --load-internal-modules bin/mymodule_test $ARG1
-Expect: expect/pymodules/mymodule/$ARG1
-
-Test: Create handle
-Args: create
-
-Test: Close handle
-Args: close
-```
-
-### Replacement scripts
-
-If the output contains timestamps or other variable content, use a `Replace:` file to normalise it before comparison:
-
-```
-Test: Show timestamp
-Command: $TOOL --load-internal-modules --command "MyMod_ShowTime"
-Expect: expect/pymodules/mymodule/showtime
-Replace: expect/pymodules/mymodule/replacements
-```
-
-A replacements file contains Perl-style substitutions, one per line:
-
-```
-s/\d{4}-\d{2}-\d{2}/DATE/g
-s/\d{2}:\d{2}:\d{2}/TIME/g
-```
-
-### Creating expectation files
-
-Run the command manually and capture its output to create the initial expectation file:
-
-```
-python3 pyro.py --load-internal-modules --command "MyCommand" > testcode/expect/pymodules/mymodule/mycommand
-```
-
-Then verify the content looks correct before committing it. Expectation files live in `testcode/expect/<suite-subpath>/`.
-
-### Adding a test to an existing suite
-
-1. Open the relevant `testcode/tests-<name>.txt`.
-2. Add a `Test:` block inside the appropriate `Group:`, or create a new `Group:` if needed.
-3. Create the corresponding expectation file in `testcode/expect/`.
-4. Run `bash run-tests <name>` and confirm the new test passes.
-
-### Registering a new suite
-
-Add an `Include:` line to `testcode/tests.txt` in the appropriate section, in alphabetical order:
-
-```
-Include: tests-pymodules-mymodule.txt
-```
+- `./pyro.py --command` and `riscos-run --command` execute OSCLI commands, not BASIC statements.
+- If you need `MODE`, `SYS`, or other BASIC-only operations, put them in a BASIC file and run it with `--command 'Run <riscos-filename>'`.
+- Use RISC OS path syntax in guest commands, for example `Run testcode.module_smoke`, not host-style slash-separated paths.
 
 ---
 
 ## References
 
 * If you need to convert a PyModule to or from C, refer to [references/convert-to-c.md](references/convert-to-c.md), and use the skills `writing-cmodules` and `using-cmhg`.
-* If you need more information on the testing file format, use the still `using-tooltester`.
+* Service announcement patterns, including callback-based startup announcements, are in [references/service-announcements.md](references/service-announcements.md).
+* Memory access, RISC OS file I/O, and SWI calling details are in [references/memory-and-io.md](references/memory-and-io.md).
+* PyModule integration test structure is in [references/testing-pymodules.md](references/testing-pymodules.md).
+* Entrypoint return convention and custom function pointer calling from ARM/BASIC are in [references/entrypoint-calling-convention.md](references/entrypoint-calling-convention.md).
+* If you need more information on the testing file format, use the skill `using-tooltester`.
+* An example stub module is can be found in `assets/stub.py`

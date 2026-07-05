@@ -1,0 +1,4 @@
+interface:
+  display_name: "libAsm"
+  short_description: "Use low-level libAsm helpers from C."
+  default_prompt: "Use $using-libasm to integrate libAsm routines into RISC OS C code."

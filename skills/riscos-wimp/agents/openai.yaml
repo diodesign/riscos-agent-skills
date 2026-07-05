@@ -1,0 +1,4 @@
+interface:
+  display_name: "RISC OS Wimp"
+  short_description: "Build or debug Wimp-facing RISC OS code."
+  default_prompt: "Use $riscos-wimp to write, review, or debug RISC OS Wimp application or module code."

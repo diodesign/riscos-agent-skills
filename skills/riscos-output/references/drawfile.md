@@ -21,6 +21,32 @@ The transformation matrix passed to the DrawFile SWIs uses the same format as th
 six 32-bit words (a, b, c, d, e, f) where a–d are in transform units (&00010000 = 1.0) and
 e–f are translations in internal Draw units.
 
+## Fitting DrawFiles Into A Wimp View
+
+For a Wimp viewer or browser plug-in, a common pattern is:
+
+1. determine the available destination width and height in OS units
+2. subtract any margins or gap around the image
+3. call `DrawFile_BBox` on the untransformed file
+4. derive x and y scale factors from the DrawFile bounds and the destination box
+5. build a transform matrix using those scales and a translation that positions the file inside the destination area
+6. pass the current redraw rectangle as the clipping rectangle to `DrawFile_Render`
+
+Important points:
+
+* `DrawFile_BBox` returns internal Draw units, not OS units
+* the translation terms of the matrix are also in internal Draw units
+* if the available width or height can be zero or negative after margins, guard that before deriving scales
+* keep the fitting policy explicit: stretch independently, preserve aspect ratio, or crop. Do not let this be an accidental side effect of integer arithmetic
+
+When rendering in a Wimp redraw loop, using the current redraw rectangle as `R4` for `DrawFile_Render` is the normal clipping path.
+
+If the viewer can display failure or placeholder states as well as a DrawFile:
+
+* clear the background first
+* keep the fallback drawing path separate from the successful DrawFile render path
+* redraw those placeholder states through the same redraw protocol rather than bypassing the Wimp
+
 ---
 
 ## DrawFile SWIs
@@ -96,6 +122,8 @@ int32_t bbox[4];   /* x0, y0, x1, y1 in internal Draw units */
 _swix(DrawFile_BBox, _INR(0,4), 0, file_data, file_size, matrix, bbox);
 /* Convert to OS units: divide each value by 256 */
 ```
+
+For fit-to-box viewers, a useful first step is to call `DrawFile_BBox` with `R3 = 0`, then derive the required scale from the returned untransformed bounds.
 
 ---
 

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Using RISC_OSLib"
+  short_description: "Use RISC_OSLib headers and linkage correctly."
+  default_prompt: "Use $using-libriscoslib when a C-based RISC OS project adds or reviews RISC_OSLib headers, APIs, or makefile linkage."

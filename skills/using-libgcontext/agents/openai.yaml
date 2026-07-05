@@ -1,0 +1,4 @@
+interface:
+  display_name: "GContext"
+  short_description: "Draw with the RISC OS GContext library."
+  default_prompt: "Use $using-libgcontext to implement drawing or text rendering with GContext on RISC OS."

@@ -1,6 +1,8 @@
 ---
 name: riscos-commands
 description: Commands ('*Commands') used by the RISC OS command line, in Command files (for *Exec), Obey files, OSCLI in BASIC, passed as `--command`s to `riscos-build-run`, executed within `.robuild.yaml` and `--commands` to RISC OS Pyromaniac. Use when needing to know about RISC OS commands in *Obey, OSCLI in BASIC, `.robuild.yaml` executions.
+metadata:
+  author: gerph@gerph.org
 license: MIT
 ---
 

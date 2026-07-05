@@ -1,6 +1,8 @@
 ---
 name: riscos-filesystem
 description: Information about how to interact with the RISC OS filesystem. Use when RISC OS filesystem operations are not clear, or when writing code which interacts with the RISC OS filesystem.
+metadata:
+  author: gerph@gerph.org
 license: MIT
 ---
 
@@ -63,6 +65,7 @@ When RISC OS files are stored on a host filesystem, they are given special treat
 
 * Common filetypes you may need to know (used in filenames in the form `,xxx`):
     * `fff` - Text file (plain text, no defined encoding, but usually ISO 8859-1)
+    * `ffe` - Command file (used for `*Exec`; will be inserted into input buffer)
     * `ffd` - Data file (arbitrary data)
     * `ff8` - Absolute (user mode executable, usually in C)
     * `ffc` - Utility (user mode executable for small operations, usually in assembly)

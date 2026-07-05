@@ -1,0 +1,4 @@
+interface:
+  display_name: "OSLib Def files"
+  short_description: "Write OSLib Def interface files and process them with riscos-defmod."
+  default_prompt: "Use $writing-oslib-defs to write or review an OSLib Def interface file and generate output with riscos-defmod."

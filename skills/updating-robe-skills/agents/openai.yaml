@@ -1,0 +1,4 @@
+interface:
+  display_name: "Updating ROBE Skills"
+  short_description: "Create or revise local build-environment skills."
+  default_prompt: "Use $updating-robe-skills to create or update a local AI skill for the RISC OS build environment."

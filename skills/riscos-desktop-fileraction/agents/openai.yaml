@@ -1,0 +1,4 @@
+interface:
+  display_name: "RISC OS FilerAction"
+  short_description: "Launch desktop Filer actions through FilerAction."
+  default_prompt: "Use $riscos-desktop-fileraction to start a RISC OS desktop Filer copy, move, delete, or related operation."

@@ -1,7 +1,10 @@
 ---
 name: using-makefiles
 description: Development notes for the RISC OS AMU makefile build system. Covers the shared makefile types (CModule, CApp, LibraryCommand, LibExport, AsmModule, BasicApp, Documentation, Resource), their variables, build targets, and global configuration. Use when creating or editing Makefile,fe1 files, adding new source files to a build, changing build options, or diagnosing build failures.
+metadata:
+  author: gerph@gerph.org
 license: MIT
+allowed-tools: Bash(riscos-amu:*) Bash(riscos-build-run:*) Bash(riscos-project:*)
 ---
 # RISC OS Makefile System
 
@@ -27,6 +30,100 @@ the `Makefiles$Path` system variable (on RISC OS). Include them by name only —
 Variables set **before** the `include` configure the build.
 Rules and extra targets placed **after** the `include` extend or override the build.
 
+For detailed AMU makefile-language behaviour, read
+`references/makefile-language.md` from this skill. Keep that reference aligned
+with the `riscos-help makefiles` topic when behaviour or conventions change.
+
+## AMU Makefile Language
+
+AMU makefiles are plain ASCII text, usually stored as `Makefile,fe1`. A
+makefile is read as logical lines; a trailing `\` continues a logical line onto
+the next physical line.
+
+Comments begin with `#`. The special comment:
+
+```makefile
+# Dynamic dependencies:
+```
+
+marks the section that AMU and related tools may update automatically. Leave it
+in place even when it is empty.
+
+The main line types are:
+
+* dependency lines, `target : prerequisites`
+* command lines, which must begin with white space
+* macro definition lines such as `NAME = value`
+* special-rule lines such as `.PHONY: test`
+
+For compatibility, prefer a tab at the start of command lines. A single-command
+rule may also be written as `target:; command`.
+
+## AMU Macros and Directives
+
+Macros are referenced as `${NAME}` or `$(NAME)`. Macro names are
+case-insensitive, unlike GNU `make`.
+
+Assignment forms supported by AMU:
+
+* `=` lazy expansion
+* `:=` immediate expansion
+* `?=` assign only if unset
+* `+=` append
+
+Macros may also be pre-defined on the command line, for example
+`riscos-amu BUILD64=1` or `riscos-amu COMPONENT=MyTool`.
+
+Useful built-in and automatic macros include:
+
+* `$@` current target
+* `$*` matched stem in inference rules
+* `$<` inferred source dependency
+* `$?` prerequisites newer than the target
+* `MAKE`, `MFLAGS`, `MAKEFLAGS`, `MAKECMDGOALS`
+* `__riscos`, `__crosscompile`, and the older host-side name `__linux`
+
+Directives and parsing features commonly seen in project makefiles:
+
+* `include` and `.include`; prefix with `-` to ignore missing files
+* `ifeq`, `ifneq`, `ifdef`, `ifndef`, `else`, `endif`
+* `VPATH` for prerequisite search paths
+* `::` to keep repeated rules for the same target distinct
+
+## Special Targets and Functions
+
+Special targets with practical impact:
+
+* `.PHONY` marks synthetic targets that should always run
+* `.SILENT` suppresses command echoing globally
+* `.IGNORE` ignores command failures globally
+* `.INIT` runs before requested targets
+* `.DONE` runs after a successful build
+* `.FAILED` runs after a failed build
+* `.DEFAULT` provides a fallback rule
+* `.SUFFIXES` controls suffix inference rules
+* `.UNIXNAMES` favours Unix-style filename handling
+
+Command prefixes:
+
+* `@` suppresses echoing for one command
+* `-` ignores failure for one command
+
+AMU supports a useful subset of GNU-make-style functions. The ones agents are
+most likely to encounter in real project makefiles are:
+
+* text/list helpers: `subst`, `patsubst`, `strip`, `sort`, `findstring`,
+  `filter`, `filter-out`, `word`, `wordlist`, `words`, `firstword`,
+  `lastword`, `join`, `addprefix`, `addsuffix`
+* filename helpers: `dir`, `notdir`
+* control helpers: `if`, `foreach`, `call`, `warning`, `error`, `origin`
+* `wildcard` for simple existence checks
+* `lc` as a non-standard lower-case helper
+
+Do not assume full GNU `make` compatibility. In particular, `wildcard` is not a
+full shell-style expander, and `suffix`, `basename`, and `shell` should not be
+relied upon as dependable features.
+
 ## Building
 
 ```bash
@@ -41,7 +138,18 @@ Makefile targets are passed as arguments:
 riscos-amu clean
 riscos-amu export
 riscos-amu ram
+riscos-amu test
 ```
+
+If a component has no shared testing convention, add a small project-local `test` target after the shared makefile include. For a C module smoke test, make it depend on `ram` and run the module with a BASIC test driver:
+
+```makefile
+.PHONY: test
+test: ram
+           riscos-build-run rm32/Module,ffa tests/test-module,fd1 --command "RMLoad Module" --command "Run test-module"
+```
+
+Use distinct RISC OS leaf names for the module and the test driver. `riscos-build-run` copies inputs into the guest by leaf name, so `tests/module,fd1` can collide with `rm32/Module,ffa`.
 
 ## Creating a New Project
 
@@ -52,333 +160,65 @@ riscos-project create --type command  --name PROJECTNAME --skeleton
 riscos-project create --type cmodule  --name PROJECTNAME --skeleton
 ```
 
+For desktop applications, choose a conventional RISC OS application name for
+`COMPONENT`: capitalised, and usually without hyphens. For example, prefer
+`WimpClicks` over `wimp-clicks`.
+
 Always build the skeleton before editing to confirm the toolchain is working.
 
-## Shared Makefile Types
+## Shared makefile quick picks
 
-| Makefile | Use for |
-|---|---|
-| `LibraryCommand` | Command-line tools and standalone executables (C or assembly) |
-| `CModule` | RISC OS relocatable modules written in C (uses CMHG) |
-| `AsmModule` | RISC OS relocatable modules written in assembly |
-| `LibExport` | Libraries exported for use by other components |
-| `CApp` | Desktop applications written in C |
-| `BasicApp` | Desktop applications written in BBC BASIC |
-| `Documentation` | PRM-in-XML documentation only, no compiled output |
-| `Resource` | Resource files only, no compilation |
+Use these shared makefiles by default:
 
-## Common Build Targets
+* `LibraryCommand` for command-line tools and standalone executables.
+* `CModule` for C modules using CMHG.
+* `AsmModule` for assembly modules.
+* `LibExport` for libraries intended to be exported.
+* `CApp` and `BasicApp` for desktop applications.
+* `Documentation` for PRM-in-XML-only components.
+* `Resource` for resource-only components.
 
-| Target | Effect |
-|---|---|
-| `all` | Build the component (default for most types) |
-| `ram` | Build as a standalone loadable module (default for module types) |
-| `rom` | Build as a partially-linked object for ROM inclusion |
-| `install` | Copy output to `INSTDIR` for disc use |
-| `install_rom` | Copy ROM object to ROM build staging area |
-| `export` | Export headers and libraries (`export_hdrs` + `export_libs`) |
-| `export_hdrs` | Export headers only |
-| `export_libs` | Export compiled libraries only |
-| `resources` | Copy resource files to the ResourceFS staging area |
-| `clean` | Remove all generated files (not exported files) |
-| `rom_link` | Final ROM link at a given base address (used by ROM build system) |
+Read `references/shared-makefile-types.md` when you need the detailed variable
+tables, export behaviour, or per-makefile caveats.
 
-## Build Architecture
+## Common targets and architecture
 
-| Variable | Effect |
-|---|---|
-| *(unset)* or `BUILD32=1` | 32-bit ARM build (default) |
-| `BUILD26=1` | 26-bit ARM build (legacy hardware) |
-| `BUILD64=1` | 64-bit AArch64 build (limited library support) |
+The targets agents most often need are `all`, `ram`, `rom`, `install`,
+`export`, `resources`, and `clean`. Architecture is controlled with at most one
+of `BUILD26=1`, `BUILD32=1`, or `BUILD64=1`.
 
-Architecture determines output directories:
+Read `references/shared-makefile-types.md` for:
 
-| Architecture | Objects | Module objects | Executables | Modules | AOF |
-|---|---|---|---|---|---|
-| 32-bit | `o32` | `oz32` | `aif32` | `rm32` | `aof32` |
-| 26-bit | `o` | `oz` | `aif` | `rm` | `aof` |
-| 64-bit | `o64` | `oz64` | `aif64` | `rm64` | `elf64` |
+* target-by-target behaviour;
+* output directory names such as `o32`, `oz32`, `aif32`, and `rm32`;
+* global build variables, optional feature variables, and pre-defined library variables;
+* `LibraryCommand`, `CModule`, `AsmModule`, `LibExport`, `CApp`, `BasicApp`,
+  `Documentation`, and `Resource` variable reference tables;
+* export-path variables and common `INITTARGET`/`CLEANTARGET` patterns.
 
-Only one architecture flag may be set at a time.
+## Running built outputs
 
-## Global Compilation Variables
+* 32-bit absolute:
+  * `riscos-build-run aif32 --command 'aif32.Program'`
+* 64-bit absolute:
+  * `riscos-build-run --64 aif64 --command 'aif64.Program'`
 
-Set before the `include` to affect compiler behaviour across all makefile types.
+If `--64` is omitted for a 64-bit absolute, the runner may report that 64-bit absolute files are not executable on this system even though the binary itself built correctly.
 
-| Variable | Default | Description |
-|---|---|---|
-| `OPTIMISE` | `yes` | Optimisation level: `no`, `size`, `time`, `yes`, `max` |
-| `UNALIGNED_LOADS` | `no` | Allow unaligned memory loads: `yes`, `no`, `default` |
-| `ASD` | *(unset)* | Set to `yes` for a debug build; output directories gain a `d` suffix. Not supported for 64-bit. |
+For `CApp` and other install-oriented components, verify packaging with an
+explicit install directory rather than a bare `riscos-amu install`. Use a
+command such as:
 
-## C Library Selection
-
-| Variable | Default | Description |
-|---|---|---|
-| `CLIBTYPE` | `noc99` | C library variant: `noc99` (StubsGS, no C99 printf/scanf), `generic` (StubsG, full C99), `static` (ANSILib, statically linked). Ignored for 64-bit builds. |
-| `NOCLIB` | *(unset)* | If defined, no C library is linked at all. |
-
-## Optional Build Features
-
-| Variable | Default | Description |
-|---|---|---|
-| `FORTIFY` | *(unset)* | Memory checker: `yes` (active), `support`/`no` (headers available, not linked), unset (absent). When `yes`, source must `#include "fortify.h"` and call `Fortify_EnterScope`/`Fortify_LeaveScope`. |
-| `PROFILE` | *(unset)* | ARM profiling: `yes` (full, `-px -g`), `simple` (functions only, `-p`), `support`/`no` (aware but inactive), unset (absent). Not supported for 64-bit. |
-
-## Pre-defined Library Variables
-
-These are set by the shared `_Libraries` include and can be used directly in `LIBS`.
-`_ZM` variants are module (ROM-safe, position-independent) versions for use in modules (named after the `-zm` compiler option).
-
-**C library:**
-
-| Variable | Description |
-|---|---|
-| `${CLIB}` | C library (selected by `CLIBTYPE`) |
-| `${CLIB_ZM}` | Module C library (used automatically by module makefiles) |
-| `${ROMCLIB}` | ROM C stubs (used during ROM builds) |
-
-**Desktop / C++:**
-
-| Variable | Description |
-|---|---|
-| `${C++LIB}`, `${C++LIB_ZM}` | C++ runtime (not available for 64-bit) |
-| `${RLIB}`, `${RLIB_ZM}` | RISC_OSLib (not available for 64-bit) |
-| `${TBOXLIBS}`, `${TBOXLIBS_ZM}` | All three Toolbox libraries bundled (not available for 64-bit) |
-| `${TBOX_EVENTLIB}`, `${TBOX_TOOLBOXLIB}`, `${TBOX_WIMPLIB}` | Individual Toolbox libraries |
-| `${DESKLIB}`, `${DESKLIB_ZM}` | DeskLib (not available for 64-bit) |
-
-**Networking** (not available for 64-bit):
-
-| Variable | Description |
-|---|---|
-| `${TCPIPLIBS}`, `${TCPIPLIBS_ZM}` | UnixLib + InetLib + SockLib5 bundled |
-| `${INETLIB}`, `${SOCKLIB}`, `${SOCKLIB5}`, `${UNIXLIB}`, `${RPCLIB}` | Individual TCP/IP libraries |
-
-**Miscellaneous:**
-
-| Variable | Description |
-|---|---|
-| `${ZLIB}` | zlib compression |
-| `${ZIPPERLIB}`, `${ZIPPERLIB_ZM}` | Zipper archive library |
-| `${MD5LIB}`, `${MD5LIB_ZM}` | MD5 hashing |
-| `${REGEXLIB}` | POSIX regular expressions |
-| `${GETOPTLIB}` | getopt argument parsing |
-| `${THROWBACKLIB}` | DDEUtils Throwback |
-| `${CONFIGLIB}`, `${CONFIGLIB_ZM}` | Configuration file library |
-| `${LLLIB}`, `${LLLIB_ZM}` | LongLong 64-bit integer library |
-| `${OSLIB}` | OSLib typed SWI interface library |
-| `${ASMLIB}`, `${ASMLIB_ZM}` | Inline assembler support (not available for 64-bit) |
-| `${RESOLVLIB}`, `${RESOLVLIB_ZM}` | DNS resolver |
-| `${P2CLIB}` | Pascal-to-C translation runtime |
-
-## LibraryCommand Variables
-
-For building command-line tools and standalone executables.
-
-| Variable | Required | Description |
-|---|---|---|
-| `COMPONENT` | Required | Component name; default output filename |
-| `TYPE` | Optional | Output type: `aif` (linked executable, default), `aof` (partial link), `util` (assembly utility binary), `basic` (BASIC program), `raw` (custom rules) |
-| `OBJS` | Optional | Space-separated object files, e.g. `o.main o.utils` |
-| `LIBS` | Optional | Space-separated libraries to link, e.g. `${CLIB}` |
-| `CDEFINES` | Optional | Preprocessor definitions, e.g. `-DDEBUG` |
-| `INCLUDES` | Optional | Comma-separated additional include paths |
-| `TARGET` | Optional | Output filename; defaults to `COMPONENT` |
-| `WORKSPACE` | Optional | Workspace size for relocatable AIF output |
-| `VIAAOF` | Optional | Set to `yes` to link via intermediate AOF (avoids weak symbol pull-in) |
-| `RESOURCES` | Optional | Resource files to install alongside the executable |
-| `FILETYPE` | Optional | RISC OS filetype to apply (for `TYPE=aof`) |
-| `DOCSRC` | Optional | PRM-in-XML documentation source files |
-| `INITTARGET` | Optional | Additional target invoked at build initialisation |
-| `CLEANTARGET` | Optional | Additional target invoked by `clean` |
-| `TESTTARGET` | Optional | Target invoked for testing; `TESTTARGET26`/`TESTTARGET32` for architecture-specific variants |
-
-## CModule Variables
-
-For building RISC OS C modules. Uses CMHG for the module header.
-The preprocessor symbol `BUILD_RAM` is defined during `ram` builds; not during `rom`.
-
-| Variable | Required | Description |
-|---|---|---|
-| `COMPONENT` | Required | Component name |
-| `OBJS` | Optional | Object files; should include the CMHG object (e.g. `o.modhead`) and all C objects |
-| `LIBS` | Optional | Libraries to link; module C library is added automatically |
-| `CDEFINES` | Optional | Preprocessor definitions |
-| `INCLUDES` | Optional | Comma-separated additional include paths |
-| `TARGET` | Optional | Output filename; defaults to `COMPONENT` |
-| `LIBCOMPONENT` | Optional | Export subdirectory name; defaults to `COMPONENT` |
-| `EXPORTS` | Optional | Files to export; typically the CMHG SWI header, e.g. `${EXP_C_H}.${COMPONENT}SWIs` |
-| `RESOURCES` | Optional | Resource files for the `resources` target |
-| `INSTALL` | Optional | Additional files for the `install` target |
-| `NOCLIB` | Optional | If defined, C library is not linked |
-| `NOROMLINK` | Optional | If defined, `rom_link` is not provided (component handles it) |
-| `LINKTYPE` | Optional | Set to `bin` to produce raw binary during `install_rom` |
-| `FORTIFY` | Optional | Fortify memory checker (see global variables) |
-| `DOCSRC` | Optional | PRM-in-XML documentation source files |
-| `INITTARGET` | Optional | Additional target at initialisation (commonly creates `h` directory) |
-| `CLEANTARGET` | Optional | Additional target during `clean` (commonly removes generated header) |
-
-## AsmModule Variables
-
-For building RISC OS modules in ARM assembly. Supports ObjAsm (multiple objects), AASM
-(single source file), or a combination. C source files can be pre-converted to assembly.
-
-| Variable | Required | Description |
-|---|---|---|
-| `COMPONENT` | Required | Component name |
-| `OBJS` | Optional | Object files for ObjAsm; use with or instead of `AASM` |
-| `AASM` | Optional | Single AASM source file assembled directly to a module |
-| `CSOURCES` | Optional | C source files to convert to assembly before building |
-| `DEFINES` | Optional | Preprocessor definitions for C-to-assembly conversion |
-| `LIBS` | Optional | Libraries to link (automatically chosen for architecture) |
-| `TARGET` | Optional | Output filename; defaults to `COMPONENT` |
-| `EXPORTS` | Optional | Files to export |
-| `RESOURCES` | Optional | Resource files for the `resources` target |
-| `INSTALL` | Optional | Additional files for the `install` target |
-| `ROMSAFE` | Optional | Set to `no` if the module must be squished for ROM inclusion |
-| `EXTRACSEDFLAGS` | Optional | Additional flags for the C-to-assembly sed step |
-| `DOCSRC` | Optional | PRM-in-XML documentation source files |
-| `INITTARGET` | Optional | Additional target at initialisation |
-| `CLEANTARGET` | Optional | Additional target during `clean` |
-| `TESTTARGET` | Optional | Testing target; suffix variants `TESTTARGET26`/`TESTTARGET32`/`TESTTARGET64` |
-
-## LibExport Variables
-
-For building and exporting libraries. Produces multiple architecture variants automatically.
-Exported library files go to `${EXP_LIB}.${LIBCOMPONENT}.o.*`.
-Header export rules must be written explicitly in the component makefile.
-
-| Variable | Required | Description |
-|---|---|---|
-| `COMPONENT` | Required | Component name |
-| `OBJS` | Optional | Object files to compile; if unset, no library object is produced |
-| `TARGET` | Optional | Base library filename; defaults to `libCOMPONENT` |
-| `LIBCOMPONENT` | Optional | Export subdirectory; defaults to `COMPONENT` |
-| `EXPORTS` | Optional | Files to export; split automatically into header and library exports |
-| `INCLUDES` | Optional | Comma-separated include paths (in addition to `PREINCLUDES`) |
-| `PREINCLUDES` | Optional | Primary include path; defaults to `C:` |
-| `NOLIBFILE` | Optional | Library format: unset (LIBFILE archive), `aof` (partial link), `true` (copy single object) |
-| `NOEXPORTS` | Optional | Set to `yes` to suppress automatic export of compiled library files |
-| `NO32BITLIBS` | Optional | If defined, 32-bit variants are not built |
-| `NOMODULELIBS` | Optional | If defined, module variants are not built |
-| `INSTALLS` | Optional | Extra source files to copy during source distribution (`install`) |
-| `INITTARGET` | Optional | Additional target at initialisation |
-| `CLEANTARGET` | Optional | Additional target during `clean` |
-
-## CApp Variables
-
-For building desktop C applications. Produces an application bundle with a squeezed
-`!RunImage` and resources.
-
-| Variable | Required | Description |
-|---|---|---|
-| `COMPONENT` | Required | Component name; bundle named `!COMPONENT` by default |
-| `OBJS` | Optional | Object files to compile; if unset, bundle contains resources only |
-| `LIBS` | Optional | Libraries to link |
-| `CDEFINES` | Optional | Preprocessor definitions |
-| `INCLUDES` | Optional | Comma-separated additional include paths |
-| `TARGET` | Optional | Application bundle name; defaults to `!COMPONENT` |
-| `LIBCOMPONENT` | Optional | Export subdirectory for any library exports |
-| `RESOURCES` | Optional | Resource files to copy during installation |
-| `EXPORTS` | Optional | Files to export; split automatically into headers and libraries |
-| `NOCLIB` | Optional | If defined, C library is not linked |
-| `I18N` | Optional | Set to `yes` for internationalisation; resources go in a locale subdirectory |
-| `INITTARGET` | Optional | Additional target at initialisation |
-| `CLEANTARGET` | Optional | Additional target during `clean` |
-
-## BasicApp Variables
-
-For building desktop BASIC applications. Source is `bas.!RunImage`; output is
-squished and installed as part of an application bundle.
-
-| Variable | Required | Description |
-|---|---|---|
-| `COMPONENT` | Required | Component name; bundle named `!COMPONENT` by default |
-| `TARGET` | Optional | Application bundle name; defaults to `!COMPONENT` |
-| `RESOURCES` | Optional | Additional resource files to copy during installation |
-| `EXPORTS` | Optional | Files to export |
-| `NOSQUISH` | Optional | If defined, the `!RunImage` is not squished |
-| `INITTARGET` | Optional | Additional target at initialisation |
-| `CLEANTARGET` | Optional | Additional target during `clean` |
-
-## Documentation Variables
-
-For components that produce only PRM-in-XML documentation. Default target is `install`.
-
-| Variable | Required | Description |
-|---|---|---|
-| `COMPONENT` | Required | Component name |
-| `DOCSRC` | Optional | PRM-in-XML source files to build and install |
-| `INSTALL` | Optional | Additional files to copy during `install` |
-| `TARGET` | Optional | Output name; defaults to `COMPONENT` |
-| `INITTARGET` | Optional | Additional target at initialisation |
-| `CLEANTARGET` | Optional | Additional target during `clean` |
-
-## Resource Variables
-
-For components that consist only of resource files with no compilation.
-
-| Variable | Required | Description |
-|---|---|---|
-| `COMPONENT` | Required | Component name |
-| `TARGET` | Optional | Output name; defaults to `COMPONENT` |
-| `RESOURCES` | Optional | Resource files for the `resources` target |
-| `INSTALL` | Optional | Files to copy during `install` |
-| `EXPORTS` | Optional | Files to export (explicit export rules required) |
-| `CLEANTARGET` | Optional | Additional target during `clean` |
-
-## Export Paths
-
-The following variables refer to standard export locations and are used in `EXPORTS` and
-explicit export rules.
-
-| Variable | Description |
-|---|---|
-| `${EXP_HDR}` | Assembly header export path (`Hdr:` style headers) |
-| `${EXP_C_H}` | C header export path (`C:` style headers) |
-| `${EXP_LIB}` | Library export root; libraries go in `${EXP_LIB}.LIBCOMPONENT.o.*` |
-
-## INITTARGET and CLEANTARGET Patterns
-
-A common pattern for CModule, where the CMHG tool writes its output to `h/modhead`:
-
-```makefile
-INITTARGET  = inittarget
-CLEANTARGET = cleantarget
-
-include CModule
-
-cleantarget:
-        ${DESTROY} h.modhead
-
-inittarget:
-        ${MKDIR} h
+```bash
+riscos-amu install INSTDIR=install
 ```
 
-## Export Rule Patterns
+This exercises the install rules and produces an application directory under
+`install/` without relying on an implicit destination.
 
-Headers exported to the standard C path:
 
-```makefile
-EXPORTS = ${EXP_C_H}.${COMPONENT}SWIs
-
-include CModule
-
-${EXP_C_H}.${COMPONENT}SWIs: cmhg.modhead
-        ${CMHG} ${CMHGFLAGS} -xh $@ cmhg.modhead
-```
-
-Headers or files exported to the library area:
-
-```makefile
-EXPORTS = ${EXP_LIB}.${COMPONENT}.h.myheader
-
-include LibExport
-
-${EXP_LIB}.${COMPONENT}.h.myheader: h.myheader
-        ${CP} $?  $@  ${CPFLAGS}
-```
+See `references/shared-makefile-types.md` for the detailed variable tables and
+patterns that used to live inline here.
 
 ## Object File Dependency Patterns
 
@@ -391,6 +231,29 @@ $(OZDIR).module: h.modhead
 
 Note: use `$(OZDIR)` not `$(ODIR)` for module objects, as modules use module
 compilation.
+
+
+## Practical validation pattern
+
+For command projects:
+
+1. Build 32-bit with `riscos-amu`.
+2. Run 32-bit smoke or self-tests with `riscos-build-run aif32 ...`.
+3. Build 64-bit with `riscos-amu BUILD64=1`.
+4. Run 64-bit smoke or self-tests with `riscos-build-run --64 aif64 ...`.
+
+Keep the 64-bit status distinct:
+
+* `builds` means `riscos-amu BUILD64=1` succeeds.
+* `runtime-validated` means the `--64` runner path also succeeds.
+
+
+## 64-bit cautions
+
+* The 64-bit build environment is useful as a separate portability check, even before runtime validation.
+* Some library or kernel helper entry points available in 32-bit builds may need guarding or replacement for `__riscos64`.
+* Avoid assuming that success in the 32-bit Norcroft build implies success in the 64-bit build.
+
 
 ## Agent Guidance
 

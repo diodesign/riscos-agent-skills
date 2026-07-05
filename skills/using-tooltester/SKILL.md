@@ -1,12 +1,18 @@
 ---
 name: using-tooltester
-description: Information about using the riscos-tooltester command, the `tests.txt` file format and replacements that can be used. Use this when the riscos-tooltester command (or its direct perl script `test.pl`) is used to manage testing.
+description: Information about using the riscos-tooltester command, the `tests.txt` file format and replacements that can be used. Use this when the riscos-tooltester command or `testcode/test.pl` is used to manage testing, especially in the Pyromaniac `testcode/` tree.
+metadata:
+  author: gerph@gerph.org
 license: MIT
+allowed-tools: Bash(riscos-tooltester:*)
 ---
 # Test Runner Guide for Agents
 
 This document describes the Pyromaniac test system so that agents can understand
 how to run tests, interpret results, and diagnose failures.
+
+Read `references/pyromaniac-tooltester.md` for the repository-specific workflow
+before adding or debugging `testcode/tests-*.txt` suites.
 
 ## Overview
 

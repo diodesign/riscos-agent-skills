@@ -1,6 +1,8 @@
 ---
 name: designing-modules
 description: How to design modules for RISC OS. Use when creating new modules, designing interfaces to modules, porting a library to be used in a new module, or extending the existing interfaces of modules.
+metadata:
+  author: gerph@gerph.org
 license: MIT
 ---
 # Module design for RISC OS

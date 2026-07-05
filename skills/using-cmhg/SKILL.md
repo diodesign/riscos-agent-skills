@@ -1,13 +1,16 @@
 ---
 name: using-cmhg
 description: Describes the CMHG file format and CMunge usage. Use when CMHG files are required for RISC OS modules.
+metadata:
+  author: gerph@gerph.org
 license: MIT
+allowed-tools: Bash(riscos-prm:*)
 ---
 
 # CMunge Skill Summary
 
 ## Purpose
-CMunge is an enhanced, free alternative to the Acorn/Castle C Module Header Generator (CMHG). It generates ARM assembly "veneers" that allow RISC OS relocatable modules to be written in C or C++. It supports 26-bit, 32-bit, and 64-bit ARM architectures.
+CMunge is an enhanced, free alternative to the Acorn C Module Header Generator (CMHG). It generates ARM assembly "veneers" that allow RISC OS relocatable modules to be written in C or C++. It supports 26-bit, 32-bit, and 64-bit ARM architectures.
 
 ## Command Line Usage
 `CMunge [options] <infile>`
@@ -35,7 +38,7 @@ Key options:
 - `swi-decoding-table`: Lists SWI names and optional specific handlers.
 - `command-keyword-table`: Defines `*Commands` and their handlers — see [references/command-tables.md](references/command-tables.md).
 - `generic-veneers`: General purpose C wrappers.
-- `vector-handlers`: Wrappers for claiming RISC OS vectors.
+- `vector-handlers`: Wrappers for claiming RISC OS vectors - see [references/vectors.md](references/vectors.md)
 - `event-handler`: Wrappers for RISC OS events.
 - `error-base` (CMunge): Base error number for the module.
 - `error-identifiers` (CMunge): Automatically generates error definitions.
@@ -99,10 +102,48 @@ These files describe common CMHG `service-call-handler` usage patterns:
 
 Service information may often also be found through the `riscos-prm --url Service_...` command.
 
+## CMHG style guidelines
+
+* Don't remove the comment sections that describe the file. They are useful for humans to know how to add new sections.
+* Any definition which may be split across lines if the definition is incomplete. For example, a list of SWIs like:
+
+```
+swi-decoding-table: JUnitXML Create/SWI_Create TestSuite/SWI_TestSuite TestCase/SWI_TestCase Close/SWI_Close
+```
+
+Can be comma separated, thus:
+
+```
+swi-decoding-table: JUnitXML Create/SWI_Create, TestSuite/SWI_TestSuite, TestCase/SWI_TestCase Close/SWI_Close
+```
+
+And the comma separated parts can be split if the comma is the last entry on the line:
+
+```
+swi-decoding-table: JUnitXML Create/SWI_Create,
+                             TestSuite/SWI_TestSuite,
+                             TestCase/SWI_TestCase,
+                             Close/SWI_Close
+```
+
+Which makes for nice aligned text.
+
+* If services are required for the module, use the symbolic names where possible from the include file `riscos/Services.h`.
+  This can be included using C preprocessor includes, like this:
+
+```
+#include "riscos/Services.h"
+
+service-call-handler: Mod_Service Service_ModeChange
+```
+
 ## References
 
 For more information on the CMHG file format, see [references/cmhg-syntax.md](references/cmhg-syntax.md).
 
-For detailed information on `vector-traps` including a worked example, see [references/vector-traps.md](references/vector-traps.md).
-
 For examples and detailed syntax of the *Command tables, see [references/command-tables.md](references/command-tables.md).
+
+### Vectors
+
+* Vectors can be claimed or passed on. For detailed information on `vectors` including a worked example, see [references/vector-traps.md](references/vectors.md).
+* If you need to post-process the vector results after it is passed on, see the `vector-traps` docuemnt for a worked example in [references/vector-traps.md](references/vector-traps.md).

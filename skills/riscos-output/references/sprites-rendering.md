@@ -1,6 +1,6 @@
 # RISC OS Sprites: Rendering
 
-SWIs for plotting sprites and masks on screen — at fixed positions, scaled, and with arbitrary linear transformations.
+SWIs for plotting sprites and masks on screen - at fixed positions, scaled, and with arbitrary linear transformations.
 
 ---
 
@@ -14,7 +14,7 @@ Plots a sprite at the current graphics cursor position. The bottom-left corner o
 - R0 = 28 + area flags
 - R1 = sprite area pointer
 - R2 = sprite pointer or name
-- R5 = plot action (see [Areas and Format](sprites-areas-and-format.md))
+- R5 = plot action (see [Plot Action Values](#plot-action-values))
 
 **Exit:** R0–R2, R5 preserved
 
@@ -59,6 +59,36 @@ As SpriteOp 48 but at an explicit coordinate.
 **Exit:** R0–R4 preserved
 
 ---
+
+## Plot Action Values
+
+Used in R5 for rendering calls such as reason codes 28, 34, 52, and 56.
+
+| Value | Effect | +8 |
+|-------|--------|----|
+| 0 | Overwrite | Use mask |
+| 1 | OR | Use mask |
+| 2 | AND | Use mask |
+| 3 | XOR | Use mask |
+| 4 | Invert screen | Use mask |
+| 5 | No change | - |
+| 6 | AND NOT | Use mask |
+| 7 | OR NOT | Use mask |
+
+For SpriteExtend scaled plotting, the same low bits are used, with extra flag bits for translation-table details.
+
+## Scale Factors Block
+
+Used by reason codes 50, 51, 52, 53, 55, and 56. A pointer to this four-word block is passed in R6. Use R6 = 0 for no scaling.
+
+| Offset | Content |
+|--------|---------|
+| 0 | x multiplier |
+| 4 | y multiplier |
+| 8 | x divisor |
+| 12 | y divisor |
+
+Scaled pixel size is `original_size * multiplier / divisor`.
 
 ## Scaled Plotting (requires SpriteExtend)
 

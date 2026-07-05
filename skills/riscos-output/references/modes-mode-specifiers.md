@@ -99,6 +99,7 @@ A 32-bit word describing a sprite's pixel format and DPI. Used in sprite control
 | 4 | 8 | 256 colours |
 | 5 | 16 | 32K colours |
 | 6 | 32 | 16M colours (24-bit in 32-bit) |
+| 7 | 32 | CMYK |
 
 ### Typical DPI values: 180, 90, 45, 22
 
@@ -192,4 +193,6 @@ The OS distinguishes mode selectors from sprite mode words by checking whether b
 | 0–7 | Red |
 | 8–15 | Green |
 | 16–23 | Blue |
-| 24–31 | Reserved (or alpha if sprite mode word bit 31 set) |
+| 24–31 | Reserved |
+
+Alpha-channel sprites store alpha in the sprite mask data, not in the high byte of the image pixels.

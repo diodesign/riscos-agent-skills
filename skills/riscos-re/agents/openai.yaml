@@ -1,0 +1,4 @@
+interface:
+  display_name: "RISC OS Reverse Engineering"
+  short_description: "Reconstruct behaviour from RISC OS binaries."
+  default_prompt: "Use $riscos-re to understand or reimplement an existing RISC OS module from its binary behaviour."

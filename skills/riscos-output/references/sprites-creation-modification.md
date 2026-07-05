@@ -11,7 +11,7 @@ SWIs for creating sprites, capturing screen content into sprites, manipulating p
 Creates a blank sprite of a given size within a sprite area. Pixel data is uninitialised.
 
 **Entry:**
-- R0 = 15 + area flags (256 or 512; see [Areas and Format](sprites-areas-and-format.md))
+- R0 = 15 + area flags (256 or 512; see [Sprite Areas](sprites-areas.md))
 - R1 = sprite area pointer
 - R2 = pointer to sprite name string
 - R3 = palette flag: 0 = no palette; 1 = include palette

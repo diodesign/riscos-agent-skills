@@ -32,24 +32,74 @@ More information on building these skill files can be found at [AgentSkills.io](
 
 The following skills are provided:
 
-* `using-bbcbasic`: Helps with the BASIC syntax, common usage and integration with RISC OS.
-* `using-makefiles`: Helps with the build system's makefiles.
-* `using-stronghelp`: Helps with the management of StrongHelp files.
-* `using-cmhg`: Helps with the creation of CMHG files.
-* `using-tooltester`: Helps with working with the golden test (expectation test) tool `riscos-tooltester`.
-* `using-libasm`: Helps with the use of the Asm library for assembly routines.
-* `using-libgcontext`: Helps with the use of the GContext graphics library.
-* `writing-assembly`: Helps with the development, debugging and testing of assembly code with the RISC OS build environment.
-* `writing-cmodules`: Helps with the development, debugging and testing of modules in C.
-* `writing-pymodules`: Helps with the development, debugging and testing of modules in Pyromaniac PyModules, particularly porting to and from C.
-* `writing-prminxml`: Helps with creating documentation using PRM-in-XML.
-* `riscos-filesystem`: Helps with RISC OS-specific filesystem issues and translating to host filenames.
-* `riscos-re`: Helps with RISC OS reverse engineering.
-* `riscos-commands`: Helps with using RISC OS commands.
-* `riscos-output`: Helps with using RISC OS output (VDU, OS_Plot, Draw, Fonts, ColourTrans).
-* `allocating-resources`: Helps when allocations are required.
-* `designing-modules`: Provides a scheme for the design of modules, before you start implementing.
-* `porting-to-riscos-c`: Provides a scheme for porting code from POSIX sources to RISC OS, in C.
+### Languages
+
+* `using-bbcbasic`: BASIC syntax, common usage and integration with RISC OS.
+* `writing-c`: Coding style and guidance for writing C code.
+* `writing-cplusplus`: Writing, building and testing C++ for the 64-bit build environment.
+* `writing-pascal`: Writing, building and testing Pascal with `riscos-p2cc`/`riscos64-p2cc`.
+* `writing-fortran`: Writing, building and testing Fortran with `riscos64-fortran`.
+* `using-perl`: Writing and debugging Perl for the RISC OS Perl 5.001 interpreter.
+* `writing-assembly`: Writing ARM assembly (veneers, callbacks, module entry points) with ObjAsm.
+* `writing-assembly-tests`: Writing ObjAsm command-line exercisers under `testcode/s`.
+* `reading-assembly`: Translating ObjAsm/ARM assembly into another language, tests, or documentation.
+
+### Modules and build system
+
+* `writing-cmodules`: Development, layout, building and testing of RISC OS modules in C.
+* `designing-modules`: Designing module interfaces before implementation begins.
+* `using-cmhg`: The CMHG file format and CMunge usage for module headers.
+* `using-makefiles`: The RISC OS AMU makefile build system, its shared makefile types and variables.
+* `porting-to-riscos-c`: Porting POSIX C projects to RISC OS with `riscos-cport`.
+* `writing-pymodules`: Building and testing PyModules (Python modules for RISC OS Pyromaniac).
+* `writing-oslib-defs`: Writing OSLib Def files and generating headers/veneers with `riscos-defmod`.
+* `allocating-resources`: Registering module names, SWI chunks, filetypes and other allocations with RISC OS Open.
+
+### RISC OS subsystems
+
+* `riscos-filesystem`: RISC OS filesystem conventions and translating to/from host filenames.
+* `riscos-commands`: Using `*Commands` in Obey files, OSCLI, `.robuild.yaml` and Pyromaniac.
+* `riscos-output`: Text/graphics output, VDU, OS_Plot, Draw, Sprites, Fonts and ColourTrans.
+* `riscos-wimp`: Writing, reviewing and porting Wimp code (windows, menus, events, SWIs).
+* `riscos-wimp-app`: Structuring small desktop Wimp applications, especially iconbar apps.
+* `riscos-wimp-templates`: Building Wimp window templates as `TemplateText` files with `riscos-ccres`.
+* `riscos-filer-like`: Building filer-like windows (grid/list views, hit-testing, scrolling).
+* `riscos-desktop-fileraction`: Driving desktop Filer operations via the FilerAction module.
+* `riscos-graphics-converters`: Writing ImageFileConvert image converter modules.
+* `riscos-network-resolver`: Using the Resolver module for DNS lookups and hostent data.
+* `riscos-network-dcistatistics`: Implementing and querying DCI4 network statistics suppliers.
+* `riscos-urls-fetching`: Fetching URL/URI contents with the Acorn URL_Fetcher module.
+* `riscos-urls-launching`: Launching URLs/URIs via AcornURI, `*URIdispatch` or legacy ANT broadcasts.
+* `riscos-throwback`: Reporting compiler/tool errors to desktop editors via LibThrowback/DDEUtils.
+* `riscos-style`: Applying the Acorn RISC OS Style Guide to desktop application design.
+* `riscos-re`: Reverse engineering existing RISC OS modules from their binaries.
+
+### Libraries
+
+* `using-libasm`: The Asm library for optimised multiply/divide, IRQ control and low-level routines.
+* `using-libgcontext`: The GContext graphics library for drawing primitives and text.
+* `using-liboslib`: The OSLib typed SWI interface library, headers and naming conventions.
+* `using-libriscoslib`: The RISC_OSLib library for desktop applications.
+* `using-libtoolbox`: The Toolbox veneer library for windows, menus, dialogues and gadgets.
+* `using-toolbox-imagefilegadget`: Using the Toolbox ImageFileGadget object and its methods.
+
+### Testing and CI
+
+* `using-tooltester`: The `riscos-tooltester` command and `tests.txt` file format.
+* `writing-pyromaniac-integration-tests`: Writing Pyromaniac `testcode/tests-*.txt` integration tests.
+* `ci-testing`: Creating and repairing RISC OS CI pipelines (GitHub Actions, GitLab CI, `.robuild.yaml`).
+* `using-gh`: Working with GitHub repositories, pull requests and releases via the `gh` CLI.
+* `using-git`: Safe non-interactive git usage, commit preparation and handling dirty worktrees.
+* `creating-pull-requests`: Writing clear, reviewer-focused pull/merge request descriptions.
+
+### Documentation
+
+* `writing-prminxml`: Creating interface documentation with PRM-in-XML.
+* `using-stronghelp`: Creating and maintaining StrongHelp manuals.
+
+### Skill management
+
+* `updating-robe-skills`: Creating or updating AI skills for the RISC OS build environment.
 
 ## Installation in Claude
 

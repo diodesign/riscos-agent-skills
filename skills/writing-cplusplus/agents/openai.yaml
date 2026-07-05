@@ -1,0 +1,4 @@
+interface:
+  display_name: "Writing C++"
+  short_description: "Develop C++ code for the RISC OS environment."
+  default_prompt: "Use $writing-cplusplus to write, update, or review C++ code for the RISC OS build environment."

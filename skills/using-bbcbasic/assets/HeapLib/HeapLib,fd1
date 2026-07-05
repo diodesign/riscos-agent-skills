@@ -1,0 +1,213 @@
+REM >HeapLib
+REM LEN Justin Fletcher
+REM Heap control library
+REM Load this after WimpLib to replace the claim/release calls
+:
+DEFFNheaplib_version:="{Module_FullVersionAndDate}"
+:
+REM PROCinitheap : Initialise the Heap manager
+DEFPROCinitheap
+SYS "OS_ReadMemMapInfo" TO h_page%
+h_size%=h_page%:h_start%=HIMEM
+h_rsize%=2:REM Space 2 relocatable entries
+h_full%=0:REM current number of entries
+SYS "Wimp_SlotSize",-1,-1 TO h_appbase%
+SYS "Wimp_SlotSize",h_appbase%+h_size%,-1
+SYS "OS_Heap",0,h_start%,,h_size%
+SYS "OS_Heap",2,h_start%,,4*h_rsize%+4 TO ,,h_reloc%
+h_reloc%+=4:h_reloc%!-4=&434F4C52
+FORi%=0TO h_rsize%*4-4 STEP4:h_reloc%!i%=-1:NEXT
+ENDPROC
+:
+REM PROCheap_free : Return amount of free space in heap
+DEFPROCheap_free(RETURN max%,RETURN free%)
+SYS "OS_Heap",1,h_start% TO ,,,free%:max%=h_size%
+ENDPROC
+:
+REM FNenlargeheap : Tries to increase heap size, TRUE if ok
+DEFFNenlargeheap
+LOCAL flags%,new%
+SYS "XWimp_SlotSize",h_appbase%+h_size%+h_page%,-1 TO new%;flags%
+IF (flags% AND 1)=1 OR new%=h_appbase%+h_size% THEN=FALSE
+h_size%+=h_page%:SYS "OS_Heap",5,h_start%,,h_page%
+=TRUE
+:
+REM FNclaimRMA : Claim an RMA block (in replacement of WimpLib FN)
+DEFFNclaimRMA(length%)
+LOCAL flags%:IF length%<1THENERROR&802,"Cannot claim negative RMA"
+SYS "XOS_Module",6,,,length% TO ,,area%;flags%
+IF (flags% AND1)>0 THENarea%=-1
+=area%
+:
+REM FNclaim : Claim a block from the heap
+REM use -ve to claim a relocatable block
+DEFFNclaim(size%)
+LOCAL loc%,big%,ok%,r%,flags%:ok%=TRUE
+IF size%<0 THENr%=TRUE:size%=ABS(size%)+4 ELSEr%=FALSE
+SYS "OS_Heap",1,h_start% TO ,,big%
+WHILE size%>big% AND ok%
+ ok%=FNenlargeheap:SYS "OS_Heap",1,h_start% TO ,,big%
+ENDWHILE
+IF NOT ok% THEN=-1
+SYS "XOS_Heap",2,h_start%,,size% TO ,,loc%;flags%
+IF (flags% AND1)=1 THEN=-1
+IF r% THEN
+ !loc%=&434F4C52:loc%+=4
+ IF h_full%=h_rsize% THEN
+  h_reloc%=FNextend(h_reloc%,4*16):h_rsize%+=16
+  IF(h_reloc% AND1)=0 THENFORr%=h_full% TO h_rsize%-1:h_reloc%!(r%*4)=-1:NEXT ELSEh_reloc%-=1:SYS "OS_Heap",3,h_start%,loc%-4:=-1
+ ENDIF
+ h_reloc%!(h_full%*4)=loc%:h_full%+=1
+ENDIF
+=loc%
+:
+REM PROCrelease : release a heap block
+DEFPROCrelease(RETURN loc%)
+LOCAL full%
+IF loc%>0 THEN
+ IF loc%>h_start%+h_size% THEN
+  SYS "OS_Module",7,,loc%
+ ELSE
+  IF loc%!-4=&434F4C52 THEN
+   full%=0
+   WHILEfull%<h_full%AND h_reloc%!(full%*4)<>loc%:full%+=1:ENDWHILE
+   IF full%=h_full% THENERROR &802,"Attempt to release unknown relocatable heap block"
+   loc%-=4:h_full%-=1:h_reloc%!(full%*4)=h_reloc%!(h_full%*4)
+   h_reloc%!(h_full%*4)=-1
+  ENDIF
+  SYS "OS_Heap",3,h_start%,loc%
+ ENDIF
+ loc%=-1
+ENDIF
+ENDPROC
+:
+REM FNextend : Change size of a relocatable block
+REM returns with bit 1 set if error (should be word aligned
+REM otherwise)
+DEFFNextend(loc%,size%)
+LOCAL new%,flags%,full%:full%=FALSE
+IF loc%!-4<>&434F4C52 THENERROR &802,"Attempt to extend non-relocatable heap block"
+REPEAT
+ SYS "XOS_Heap",4,h_start%,loc%-4,size% TO ,,new%;flags%
+ IF (flags% AND1)=1 THENfull%=NOT FNenlargeheap
+UNTIL (flags% AND1)=0 OR full%
+IF full% THEN
+ new%=loc%-3
+ELSE
+ IF loc%<>h_reloc% THEN
+  full%=0
+  WHILE full%<h_full% AND h_reloc%!(full%*4)<>loc%:full%+=1:ENDWHILE
+  IF full%=h_full% THENERROR &802,"Unknown relocatable heap block"
+  h_reloc%!(full%*4)=new%+4
+ ENDIF
+ENDIF
+=new%+4
+:
+REM PROClockblock   : Prevent a block from being moved
+REM PROCunlockblock : Enable a block to be relocated
+DEFPROClockblock(loc%)
+IF loc%!-4<>&434F4C52 THENERROR &802,"Attempt to lock non-relocatable heap block" ELSEloc%!-4=&4B434F4C
+ENDPROC
+DEFPROCunlockblock(loc%)
+IF loc%!-4<>&4B434F4C THENERROR &802,"Attempt to unlock non-relocatable heap block" ELSEloc%!-4=&434F4C52
+ENDPROC
+:
+REM PROCheap_rsort : sort relocatable heap table
+DEFPROCheap_rsort:SYS "OS_HeapSort",h_rsize%,h_reloc%,0:ENDPROC
+:
+REM PROCheap_garbage : perform garbage collection on heap
+REM will call PROCheap_relocate(block%,size%) for each to be
+REM moved, so program must include a routine to update pointers
+DEFPROCheap_garbage
+LOCAL h_rblk%,block%,largest%,flags%,maxfree%,i%
+SYS "XOS_Heap",2,h_start%,,8+h_full%*4 TO ,,block%;flags%
+IF (flags% AND1)=0 THEN
+ IF block%>h_reloc% THEN
+  SYS "OS_Heap",3,h_start%,block%
+ ELSE
+  h_rsize%=h_full%+1:!block%=&434F4C52:block%+=4
+  FOR i%=0 TO h_full%*4 STEP 4:block%!i%=h_reloc%!i%:NEXT
+  SYS "OS_Heap",3,h_start%,h_reloc%-4:h_reloc%=block%
+ ENDIF
+ENDIF
+PROCheap_rsort
+SYS "Hourglass_On"
+IF h_full%>0 THEN
+ SYS "OS_Heap",1,h_start% TO ,,largest%
+ FORh_rblk%=h_full%-1 TO 0 STEP-1
+  block%=h_reloc%!(h_rblk%*4)
+  IF block%!-4<>&4B434F4C THEN
+   SYS "OS_Heap",6,h_start%,block%-4 TO ,,,size%
+   ok%=FALSE
+   REPEAT
+    IF size%<largest% THEN
+     PROCheap_relocate(block%,size%-8):SYS "OS_Heap",1,h_start% TO ,,largest%,maxfree%:IF h_reloc%!(h_rblk%*4)=block% THENok%=TRUE ELSEblock%=h_reloc%!(h_rblk%*4)
+    ELSE
+     ok%=TRUE
+    ENDIF
+   UNTIL ok%
+  ENDIF
+ NEXT
+ENDIF
+SYS "Hourglass_Off"
+PROCheap_reduce
+ENDPROC
+:
+REM PROCheap_reduce : reduce the heap to it's smallest size
+DEFPROCheap_reduce
+LOCAL maxfree%,flags%
+maxfree%=h_size%-h_start%!8
+WHILE maxfree%>h_page%
+ SYS "XOS_Heap",5,h_start%,,-h_page% TO ;flags%
+ IF (flags% AND 1)=1 THENmaxfree%=0 ELSEh_size%-=h_page%:maxfree%-=h_page%
+ SYS "XWimp_SlotSize",h_appbase%+h_size%,-1 TO ;flags%
+ENDWHILE
+ENDPROC
+:
+REM PROCheap_oktomove : move a relocatable heap block
+REM Only called within PROCheap_garbage, from PROCheap_relocate
+DEFPROCheap_oktomove(RETURN block%,size%)
+LOCAL loc%,i%
+SYS "OS_Heap",2,h_start%,,size%+4 TO ,,loc%
+IF loc%>block% THENSYS "OS_Heap",3,h_start%,loc%:ENDPROC
+!loc%=&434F4C52:loc%+=4
+FOR i%=0 TO size%-4 STEP 4:loc%!i%=block%!i%:NEXT
+SYS "OS_Heap",3,h_start%,block%-4:block%=loc%:h_reloc%!(h_rblk%*4)=loc%
+ENDPROC
+:
+REM FNstrdup : Duplicate a string
+DEFFNstrdup(a$):LOCAL p%:p%=FNclaim(LEN(a$)+1)
+IF p%<>-1 THEN$(p%)=a$
+=p%
+:
+REM FNclaimlinked : Claim a block and link it into a chain
+REM x% = the top of the chain (initially 0)
+REM l% = size of block to claim
+DEFFNclaimlinked(RETURN x%,l%)
+LOCAL p%:p%=FNclaim(l%+4):IF p%=-1 THEN=-1
+!p%=x%+4:x%=p%:REM Link it
+=p%+4
+:
+REM PROCreleaselinks : Release all the values in a linked list
+DEFPROCreleaselinks(RETURN x%)
+LOCAL n%
+WHILE x%<>0:n%=!x%:PROCrelease(x%):x%=n%-4:ENDWHILE
+ENDPROC
+:
+REM FNstrduplinked : Duplicate a string to a linked list
+DEFFNstrduplinked(RETURN x%,a$)
+LOCAL p%:p%=FNclaim(5+LEN(a$)):IF p%=-1 THEN=-1
+!p%=x%+4:x%=p%:REM Link it
+$(p%+4)=a$:REM Write string
+=p%+4
+:
+REM PROCreleaselinked : Release an item from a linked list
+DEFPROCreleaselinked(RETURN x%,RETURN d%)
+LOCAL l%,p%,n%
+p%=x%:WHILE p%<>0
+ n%=!p%:IF p%=d% THEN
+  p%-=4:PROCrelease(p%):IF l%=0 THENx%=n%-4 ELSEl%!-4=n%
+  p%=l%
+ ENDIF:l%=p%:p%=n%-4
+ENDWHILE:d%=-1
+ENDPROC

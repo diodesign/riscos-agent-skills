@@ -1,0 +1,4 @@
+interface:
+  display_name: "PRM-in-XML"
+  short_description: "Write RISC OS interface documentation in PRM-in-XML."
+  default_prompt: "Use $writing-prminxml to create or review RISC OS API documentation in PRM-in-XML."

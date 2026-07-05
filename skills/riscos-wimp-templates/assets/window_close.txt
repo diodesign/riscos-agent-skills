@@ -1,0 +1,73 @@
+wimp_window {
+  template_name:"close"
+  visible:752,734,1518,1006
+  xscroll:0
+  yscroll:0
+  next:wimp_TOP
+  window_flags:wimp_WINDOW_MOVEABLE | wimp_WINDOW_AUTO_REDRAW | wimp_WINDOW_BOUNDED_ONCE | wimp_WINDOW_TITLE_ICON | wimp_WINDOW_NEW_FORMAT
+  title_fg:wimp_COLOUR_BLACK
+  title_bg:wimp_COLOUR_LIGHT_GREY
+  work_fg:wimp_COLOUR_BLACK
+  work_bg:wimp_COLOUR_VERY_LIGHT_GREY
+  scroll_outer:wimp_COLOUR_CREAM
+  scroll_inner:wimp_COLOUR_ORANGE
+  highlight_bg:wimp_COLOUR_CREAM
+  extra_flags:
+  extent:0,-272,766,0
+  title_flags:wimp_ICON_TEXT | wimp_ICON_BORDER | wimp_ICON_HCENTRED | wimp_ICON_VCENTRED | wimp_ICON_FILLED | wimp_ICON_INDIRECTED
+  work_flags:wimp_BUTTON_CLICK
+  sprite_area:&1
+  xmin:0
+  ymin:0
+  text.text:"Paint"
+  text.size:6
+  text.validation:""
+  wimp_icon {
+    extent:546,-256,746,-188
+    icon_flags:wimp_ICON_TEXT | wimp_ICON_BORDER | wimp_ICON_HCENTRED | wimp_ICON_VCENTRED | wimp_ICON_FILLED | wimp_ICON_INDIRECTED | wimp_BUTTON_CLICK
+    icon_esg:1
+    icon_fg:wimp_COLOUR_BLACK
+    icon_bg:wimp_COLOUR_VERY_LIGHT_GREY
+    text.text:"Save"
+    text.size:12
+    text.validation:"R6,3"
+  }
+  wimp_icon {
+    extent:6,-174,760,-4
+    icon_flags:wimp_ICON_TEXT | wimp_ICON_HCENTRED | wimp_ICON_VCENTRED | wimp_ICON_INDIRECTED
+    icon_esg:0
+    icon_fg:wimp_COLOUR_BLACK
+    icon_bg:wimp_COLOUR_VERY_LIGHT_GREY
+    text.text:"Like it matters?"
+    text.size:256
+    text.validation:"l40"
+  }
+  wimp_icon {
+    extent:142,-248,330,-196
+    icon_flags:wimp_ICON_TEXT | wimp_ICON_BORDER | wimp_ICON_HCENTRED | wimp_ICON_VCENTRED | wimp_ICON_FILLED | wimp_ICON_INDIRECTED | wimp_BUTTON_CLICK
+    icon_esg:1
+    icon_fg:wimp_COLOUR_BLACK
+    icon_bg:wimp_COLOUR_VERY_LIGHT_GREY
+    text.text:"Discard"
+    text.size:12
+    text.validation:"R5,3"
+  }
+  wimp_icon {
+    extent:344,-248,532,-196
+    icon_flags:wimp_ICON_TEXT | wimp_ICON_BORDER | wimp_ICON_HCENTRED | wimp_ICON_VCENTRED | wimp_ICON_FILLED | wimp_ICON_INDIRECTED | wimp_BUTTON_CLICK
+    icon_esg:1
+    icon_fg:wimp_COLOUR_BLACK
+    icon_bg:wimp_COLOUR_VERY_LIGHT_GREY
+    text.text:"Cancel"
+    text.size:12
+    text.validation:"R5,3"
+  }
+  wimp_icon {
+    extent:-98,-182,802,-168
+    icon_flags:wimp_ICON_SPRITE | wimp_ICON_HCENTRED | wimp_ICON_VCENTRED
+    icon_esg:0
+    icon_fg:wimp_COLOUR_BLACK
+    icon_bg:wimp_COLOUR_VERY_LIGHT_GREY
+    sprite_only:"divider"
+  }
+}

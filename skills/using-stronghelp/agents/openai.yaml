@@ -1,0 +1,4 @@
+interface:
+  display_name: "StrongHelp"
+  short_description: "Develop and maintain StrongHelp manuals."
+  default_prompt: "Use $using-stronghelp to create, edit, or build a RISC OS StrongHelp manual."

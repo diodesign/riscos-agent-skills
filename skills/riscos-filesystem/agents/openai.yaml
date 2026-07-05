@@ -1,0 +1,4 @@
+interface:
+  display_name: "RISC OS Filesystem"
+  short_description: "Handle RISC OS filesystem conventions correctly."
+  default_prompt: "Use $riscos-filesystem to work with RISC OS filenames, filetypes, or filesystem behaviour."

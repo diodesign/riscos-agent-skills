@@ -1,0 +1,100 @@
+; Common functions for use with ColourTrans
+
+
+; Read a mode and palette from command line
+; => r1 -> mode string ({-|<mode number>|W<sprite type>a?|S<format-and-depth>}[cdw])
+;           - => current mode
+;           W => sprite mode word, given a sprite type number, with 'a' for alpha channel
+;           S => mode selector, given a data format
+; <= r1 -> end of mode string
+;    r2 = mode
+;    r3 = palette (c=> -1 for current, d=> 0 for default, w=> wimp palette)
+get_modepal SIGNATURE
+10
+        LDRB    r0, [r1]
+        TEQ     r0, #' '
+        ADDEQ   r1, r1, #1
+        BEQ     %BT10
+        TEQ     r0, #'-'
+        ADDEQ   r1, r1, #1
+        MOVEQ   r2, #-1
+        BEQ     %FT60
+        TEQ     r0, #'S'
+        BEQ     %FT20
+        TEQ     r0, #'W'
+        BNE     %FT50
+
+; Sprite mode word, followed by a type number, and maybe 'a' to indicate alpha channel data
+        ADD     r1, r1, #1
+        XSWI    OS_ReadUnsigned, 10
+        LDR     r0, =(1 :OR: (90<<1) :OR: (90<<14))
+        ORR     r2, r0, r2, LSL #27
+        LDRB    r0, [r1]
+        TEQ     r0, #'a'
+        ORREQ   r2, r2, #(1<<13)
+        ADDEQ   r1, r1, #1
+        B       %FT60
+
+20
+; D<log2bpp>
+        ADD     r1, r1, #1
+        XSWI    OS_ReadUnsigned, 10
+        STR     r2, mode_descriptor + 12    ; store in the format word
+        ADR     r2, mode_descriptor
+        B       %FT60
+
+50
+        XSWI    OS_ReadUnsigned, 10
+60
+        LDRB    r0, [r1], #1
+        TEQ     r0, #'c'
+        MOVEQ   r3, #-1
+        MOVEQ   pc, lr
+        TEQ     r0, #'d'
+        MOVEQ   r3, #0
+        MOVEQ   pc, lr
+        TEQ     r0, #'w'
+        BNE     %FT80
+
+; select the right wimp palette for this mode
+        Entry   "r0-r2"
+        XSWI    OS_ReadModeVariable, r2, ModeVariable_Log2BPP
+        MOV     r3, #0                          ; default to default palette
+        TEQ     r2, #0
+        ADREQL  r3, wimp_palette2
+        TEQ     r2, #1
+        ADREQL  r3, wimp_palette4
+        TEQ     r2, #2
+        ADREQL  r3, wimp_palette16
+        EXIT
+
+80
+        PrintLine "ERROR: Unrecognised mode, use <mode>{c|d}"
+        MOV     pc, lr
+
+mode_descriptor
+        DCD     1   ; mode selector
+        DCD     800 ; width
+        DCD     600 ; height
+        DCD     0   ; depth and format
+        DCD     -1  ; frequency
+        DCD     -1  ; no mode pairs
+
+
+; Literal pool
+        LTORG
+
+
+wimp_palette16
+        DCD     &FFFFFF00, &DDDDDD00, &BBBBBB00, &99999900
+        DCD     &77777700, &55555500, &33333300, &00000000
+        DCD     &99440000, &00EEEE00, &00CC0000, &0000DD00
+        DCD     &BBEEEE00, &00885500, &00BBFF00, &FFBB0000
+
+wimp_palette2
+        DCD     &FFFFFF00, &00000000
+
+wimp_palette4
+        DCD     &FFFFFF00, &BBBBBB00, &77777700, &00000000 ; colour 0, 2, 4, 7
+
+        END

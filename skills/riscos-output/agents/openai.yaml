@@ -1,0 +1,4 @@
+interface:
+  display_name: "RISC OS Output"
+  short_description: "Create graphical output on RISC OS."
+  default_prompt: "Use $riscos-output to implement RISC OS text, graphics, font, sprite, or ColourTrans output."

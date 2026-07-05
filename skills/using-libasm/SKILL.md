@@ -1,6 +1,8 @@
 ---
 name: using-libasm
 description: Library of routines for RISC OS C programming. Provides optimized multiplication/division, processor identification, IRQ control, floating-point preservation, and non-C (registrant) function calls. Use when C code needs assembly-level functionality or when porting code that requires these low-level operations. The library is linked by adding C:Asm.o.libAsm to the LIBS line in a makefile and included via headers like #include "Asm/muldiv.h".
+metadata:
+  author: gerph@gerph.org
 license: MIT
 ---
 

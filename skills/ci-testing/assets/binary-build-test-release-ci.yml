@@ -1,0 +1,102 @@
+---
+name: {{WORKFLOW_NAME}}
+
+on:
+  push:
+    branches: ["*"]
+    tags: ["v*"]
+  pull_request:
+    types: [opened, reopened, synchronize]
+    branches: ["*"]
+
+jobs:
+  build-riscos:
+    runs-on: ubuntu-latest
+    container:
+      image: {{CONTAINER_IMAGE}}
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      leafname: ${{ steps.version.outputs.leafname }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: RISC OS 64 build
+        run: |
+          cd {{BUILD_DIR}}
+          {{BUILD_64_COMMANDS}}
+
+      - name: RISC OS 32 build
+        run: |
+          cd {{BUILD_DIR}}
+          {{BUILD_32_COMMANDS}}
+
+      - name: Create archive of outputs
+        run: |
+          {{PACKAGE_COMMANDS}}
+
+      - name: Give the output a versioned name
+        id: version
+        run: |
+          if [ -f {{VERSION_FILE}} ] ; then
+              version=$(awk -F'"' '/^#define Module_FullVersion[[:space:]]+"/ { print $2; exit }' {{VERSION_FILE}})
+          else
+              version=$(git rev-parse --short HEAD)
+          fi
+          leafname="{{ARCHIVE_STEM}}-$version.zip"
+          mv {{RISCOS_ARCHIVE_NAME}} "$leafname"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "leafname=$leafname" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: {{ARTIFACT_NAME}}
+          path: ${{ steps.version.outputs.leafname }}
+
+  test-riscos:
+    runs-on: ubuntu-latest
+    container:
+      image: {{CONTAINER_IMAGE}}
+    concurrency:
+      group: riscos-build-server
+    needs:
+      - build-riscos
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Download built RISC OS binary
+        uses: actions/download-artifact@v8
+        with:
+          name: {{ARTIFACT_NAME}}
+
+      - name: Decompress built binary
+        run: |
+          cd {{BUILD_DIR}}
+          riscos-unzip ../"${{ needs.build-riscos.outputs.leafname }}"
+
+      - name: Run on the build service
+        run: |
+          cd {{BUILD_DIR}}
+          zip /tmp/source-archive.zip {{TEST_SOURCE_FILES}} .robuild.yaml
+          riscos-build-online -A {{TEST_ARCH}} -i /tmp/source-archive.zip -a off -t 60
+
+  release:
+    needs:
+      - build-riscos
+      - test-riscos
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+    steps:
+      - name: Download built RISC OS binary
+        uses: actions/download-artifact@v8
+        with:
+          name: {{ARTIFACT_NAME}}
+
+      - name: Create Release
+        uses: ncipollo/release-action@v1
+        with:
+          prerelease: false
+          draft: true
+          artifacts: "${{ needs.build-riscos.outputs.leafname }}"
+          artifactContentType: application/zip

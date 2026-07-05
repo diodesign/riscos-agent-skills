@@ -1,0 +1,24 @@
+%YAML 1.0
+---
+
+jobs:
+  build:
+    env:
+      "Sys$Environment": ROBuild
+      "BUILD32": 1
+      "Alias$AMU": "HostAMU %*0"
+
+    script:
+      - echo
+      - echo *** Build the component ***
+      - {{EXPORT_COMMAND}}
+
+      - echo *** Collect exported files ***
+      - cdir Artifacts
+      - {{ARTIFACT_COLLECTION_COMMANDS}}
+
+      - echo
+      - echo *** SUCCESS ***
+
+    artifacts:
+      - path: Artifacts

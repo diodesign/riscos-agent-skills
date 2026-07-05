@@ -1,0 +1,7 @@
+interface:
+  display_name: "RISC OS Style"
+  short_description: "Official Acorn RISC OS UI style guide"
+  default_prompt: "Use $riscos-style to check this RISC OS application against the official Acorn desktop style guide."
+
+policy:
+  allow_implicit_invocation: true

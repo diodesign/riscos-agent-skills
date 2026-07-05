@@ -1,0 +1,4 @@
+interface:
+  display_name: "RISC OS Filer-like Interfaces"
+  short_description: "Build or review a Filer-style object browser window."
+  default_prompt: "Use $riscos-filer-like to create, review, or extend a RISC OS Filer-style object browser in a Wimp window."

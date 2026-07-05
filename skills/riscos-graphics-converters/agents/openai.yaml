@@ -1,0 +1,4 @@
+interface:
+  display_name: "RISC OS Graphics Converters"
+  short_description: "Build RISC OS image converter modules."
+  default_prompt: "Use $riscos-graphics-converters to create or update a RISC OS ImageFileConvert converter."

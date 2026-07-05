@@ -1,0 +1,4 @@
+interface:
+  display_name: "Writing PyModules"
+  short_description: "Build RISC OS Pyromaniac modules."
+  default_prompt: "Use $writing-pymodules to create, update, or test a PyModule for RISC OS Pyromaniac."

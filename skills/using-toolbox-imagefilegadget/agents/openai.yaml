@@ -1,0 +1,4 @@
+interface:
+  display_name: "Toolbox ImageFileGadget"
+  short_description: "Use RISC OS ImageFileGadget methods"
+  default_prompt: "Use $using-toolbox-imagefilegadget to implement a Toolbox window that displays an image file."

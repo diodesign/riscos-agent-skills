@@ -1,0 +1,4 @@
+interface:
+  display_name: "Using Git"
+  short_description: "Handle Git worktrees and commits safely."
+  default_prompt: "Use $using-git when preparing commits, inspecting status, or managing a dirty Git worktree."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Reading Assembly"
+  short_description: "Interpret RISC OS ARM assembly code."
+  default_prompt: "Use $reading-assembly to read or translate RISC OS ObjAsm or ARM assembly."

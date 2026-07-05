@@ -1,0 +1,20 @@
+%YAML 1.0
+---
+
+jobs:
+  test:
+    env:
+      "Sys$Environment": ROBuild
+
+    script:
+      - echo
+      - echo *** Load module and run test ***
+      - RMLoad {{MODULE_PATH}}
+      - {{PREPARE_COMMANDS}}
+      - {{RUN_COMMAND}}
+      - {{ASSERTION_COMMANDS}}
+      - echo
+      - echo *** SUCCESS ***
+
+    artifacts:
+      - path: {{RETURN_ARTIFACT_PATH}}

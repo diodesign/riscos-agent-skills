@@ -1,0 +1,4 @@
+interface:
+  display_name: "RISC OS URL Fetching"
+  short_description: "Fetch URL contents through URL_Fetcher."
+  default_prompt: "Use $riscos-urls-fetching to fetch URL contents from RISC OS code with URL_Fetcher."

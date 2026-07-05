@@ -1,0 +1,4 @@
+interface:
+  display_name: "CI Testing"
+  short_description: "Build RISC OS CI workflows"
+  default_prompt: "Use $ci-testing to create or update a GitHub CI workflow for a RISC OS project."
