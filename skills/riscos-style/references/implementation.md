@@ -34,9 +34,10 @@
 - Design templates in a standard low-resolution mode, then verify them in high-resolution modes as well.
 - Allow for screen-mode variation rather than assuming a single geometry.
 - For dialogue layout, measure content placement from the visible work area rather than from the outer screen coordinates or title bar.
-- Keep a minimum clearance of `12` OS units between controls and the visible window edge.
+- Keep a minimum clearance of `12` OS units between controls and the visible window edge, and at least `16` to `24` OS units between text strings and window or panel boundaries.
 - Keep ordinary control-to-control spacing at `8` OS units.
 - Treat alignment that is within `8` OS units of exact alignment as a layout fault to correct, not as acceptable variation.
+- Never allow text to clip or truncate against window or panel boundaries. Size side panels, status bars, and fixed window work areas to accommodate the longest anticipated text string: `min_panel_width = (max_characters * char_width) + left_margin + right_margin` (using at least `16` OS units per character for system font or 12pt fonts, or `18-20` OS units average for proportional text).
 
 ## Sprite metrics
 
@@ -58,7 +59,7 @@
 - If a window has both horizontal and vertical scroll bars, also provide the resize icon.
 - Do not provide a resize icon on its own; pair it with at least one scroll bar.
 - If a window has title and resize icons, also provide the toggle icon.
-- If a window has a close icon, also provide the back icon.
+- If a window has a close icon, also provide the back icon (`wimp_WINDOW_BACK_ICON`). Application windows, document windows, game canvases, and persistent utility windows must provide the back icon so users can lower the window in the stack. The only windows that omit the back icon are transient modal dialogues and windows opened as menu submenus (such as `ProgInfo` or `SaveAs`).
 - Do not set both foreground and background stacking bits together.
 - Keep titles free of leading spaces, trailing spaces, and trailing colons.
 - Aim for a width:height or height:width ratio near `1.414` with roughly `25%` tolerance either side.

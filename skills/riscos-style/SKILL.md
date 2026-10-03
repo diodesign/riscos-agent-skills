@@ -30,7 +30,7 @@ Read only the sections that match the task:
 - For menu trees, standard menu names, icon bar menus, ellipses, submenu arrows, and Adjust semantics, read [references/menus.md](references/menus.md).
 - For persistent or transient dialogue boxes, default actions, wording, control choices, or standard save/print/find dialogues, read [references/dialogue-boxes.md](references/dialogue-boxes.md).
 - For caret behaviour, keyboard shortcuts, mouse usage, selection, drag and drop, or clipboard-style operations, read [references/input-selection.md](references/input-selection.md).
-- For icon appearance, colour use, sound use, sprite expectations, and visual harmony on the desktop, read [references/visual-design.md](references/visual-design.md).
+- For icon appearance, colour use, sound use, sprite expectations, typography, and visual harmony on the desktop, read [references/visual-design.md](references/visual-design.md).
 - For legal implementation techniques, redraw responsiveness, OS-unit measurements, sprite sizes, menu sizing, and dialogue geometry, read [references/implementation.md](references/implementation.md).
 - For translated text, character sets, and locale-sensitive formats, read [references/internationalisation.md](references/internationalisation.md).
 

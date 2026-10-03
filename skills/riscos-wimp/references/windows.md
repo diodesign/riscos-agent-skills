@@ -9,6 +9,24 @@ Use this file for window creation, static layout, and basic open/close behaviour
 * If behaviour differs from an original implementation, log the flags just before creation.
 * For new-format windows, use the active exported structure definitions. Incorrect field layout will often appear as later event-protocol failures rather than an immediate create-window error.
 
+### Window flags and furniture rules
+
+* **Ordinary Application / Canvas Windows**: Must provide Moveable, Title, Close, and Back furniture:
+  `wimp_WINDOW_MOVEABLE | wimp_WINDOW_TITLE_ICON | wimp_WINDOW_CLOSE_ICON | wimp_WINDOW_BACK_ICON | wimp_WINDOW_NEW_FORMAT`
+* **Scrollable / Document Windows**: Additionally provide scroll bars, toggle, and size icons:
+  `| wimp_WINDOW_TOGGLE_ICON | wimp_WINDOW_SIZE_ICON | wimp_WINDOW_VSCROLL | wimp_WINDOW_HSCROLL`
+* **Back Icon Rule**: Any window with a close icon or title bar MUST have `wimp_WINDOW_BACK_ICON` (`&01000000`, bit 24) so the user can send the window to the bottom of the window stack without closing it.
+* **Exceptions (No Back Icon)**: Only omit `wimp_WINDOW_BACK_ICON` for:
+  1. Windows opened as submenus attached to menus (such as `ProgInfo`, `SaveAs`, colour pickers).
+  2. Transient query or modal alert dialogues that lack standard title furniture.
+
+### Work area extent and boundary calculation
+
+* Base window dimensions on the maximum extent of content plus generous margins, not arbitrary small hardcoded values.
+* When setting window `extent` `(xmin, ymin, xmax, ymax)`:
+  * For custom-drawn windows (games, tools, graphics displays), compute `xmax` and `ymin` so that all elements, labels, and controls fit with at least `16` to `24` OS units padding inside the boundary.
+  * Never place text labels flush against the right or bottom edges of the work area; text truncation or clipping at window edges is a severe desktop visual defect.
+
 ## Opening windows
 
 * `Wimp_OpenWindow` updates the active window list.

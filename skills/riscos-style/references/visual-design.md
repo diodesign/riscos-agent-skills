@@ -6,6 +6,7 @@
 - Desktop harmony
 - Colour usage
 - Sound usage
+- Typography and antialiased font selection
 
 ## Icon rules
 
@@ -68,3 +69,16 @@
 - Use `D` validation only on writable fields.
 - Treat `L` multi-line validation on writable fields as undefined, and use values above `32` where multi-line counts are supplied.
 - Use `K` key-notification validation only on writable fields.
+
+## Typography and text rendering
+
+- Modern RISC OS desktop applications should strive to use the antialiased Font Manager system rather than raw VDU 5 system text.
+- Use the standard Acorn desktop outline fonts:
+  - `Homerton.Medium`: standard sans-serif for UI labels, titles, and proportional text.
+  - `Trinity.Medium`: standard serif font for body text and long-form reading.
+  - `Corpus.Medium`: standard monospaced font for code, terminal output, hex dumps, and aligned tabular data.
+- For window controls, status labels, and dialogues, use Wimp icons or `Wimp_PlotIcon` to automatically inherit the user's desktop font, 3D borders, and proper anti-aliased rendering without manual font handle tracking.
+- When drawing custom text in window work areas, use `Font_Paint` with font handles obtained from `Font_FindFont` (and `ColourTrans_SetFontColours` for proper antialiasing against window backgrounds).
+- Treat raw VDU 5 text as a legacy fallback only, reserved for retro 8-bit styling or emergency debugging when Font Manager is unavailable.
+- Prevent text clipping: always design layouts with sufficient width and height so that labels and messages have at least `16` to `24` OS units clearance from window and panel boundaries.
+
