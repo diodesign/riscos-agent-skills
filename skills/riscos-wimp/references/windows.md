@@ -18,7 +18,7 @@ Use this file for window creation, static layout, and basic open/close behaviour
 * **Back Icon Rule**: Any window with a close icon or title bar MUST have `wimp_WINDOW_BACK_ICON` (`&01000000`, bit 24) so the user can send the window to the bottom of the window stack without closing it.
 * **Exceptions (No Back Icon)**: Only omit `wimp_WINDOW_BACK_ICON` for:
   1. Windows opened as submenus attached to menus (such as `ProgInfo`, `SaveAs`, colour pickers).
-  2. Transient query or modal alert dialogues that lack standard title furniture.
+  2. Transient query or modal alert dialogues (such as quit/close confirmations, which have a title bar but omit close and back icons).
 
 ### Work area extent and boundary calculation
 
