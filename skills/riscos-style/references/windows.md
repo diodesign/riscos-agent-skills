@@ -18,6 +18,7 @@
 ## Standard behaviour
 
 - Let the Wimp handle normal front, back, move, resize, and scroll behaviour.
+- Provide the back icon (`Send to back` furniture) on every window that has a close icon or title bar. Users rely on the back icon to send windows to the bottom of the window stack without closing them. The only exceptions are transient dialogues and windows attached to menus as submenus (such as `ProgInfo` or `SaveAs`), which close automatically or have specialised dismissal rules.
 - Preserve the user's chosen resized window size as the new standard size where the Wimp expects it.
 - Reopen iconised windows with the same unsaved state and view position.
 - Provide an application-specific inner sprite for iconised windows.

@@ -275,6 +275,13 @@ Note: The delete character (127) can be redefined but still cannot be printed.
 | Cursor editing | Supported | Not supported |
 | Text size | Fixed | Configurable via VDU 23, 17, 7 |
 
+### Desktop Wimp and Font Manager considerations
+
+In modern RISC OS desktop applications, VDU 5 text should generally be avoided in favour of the Font Manager (`Font_Paint`) or `Wimp_PlotIcon`:
+* **Aesthetics**: VDU 5 plots archaic 8×8 teletext-style bitmap characters without anti-aliasing, clashing with the desktop appearance.
+* **Coordinate origin mismatch**: In VDU 5 mode, coordinates specify the **top-left** of the character cell (characters are drawn downwards). In contrast, standard typography and the Font Manager specify the **baseline**. Placing VDU 5 text at the bottom of an area (`y_bot`) causes characters to hang below the line and clip or overwrite adjacent graphics.
+
+
 ## Screen Modes (VDU 22)
 
 Standard modes include:

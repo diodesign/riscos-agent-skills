@@ -7,9 +7,10 @@ Use this reference when creating a new ordinary Wimp window that is not already 
 - Start from [../assets/window_document.txt](../assets/window_document.txt) when you need a normal `New Format` window shell with standard title colours and standard scroll/icon setup.
 - For a non-user-redrawn dialogue or choices pane, change the document window's work area from transparent to grey `1` and then remove scroll bars, resize, and toggle icons if the window does not need them.
 - Keep the standard title colours from the document template: black title text on light grey title background, with `text.validation:""` so the title uses the normal desktop colours.
-- If the window keeps a close icon, also keep the back icon.
+- If the window keeps a close icon, also keep the back icon (`wimp_WINDOW_BACK_ICON`). Ordinary application windows, canvas windows, and persistent utility windows must retain the back icon so users can lower them in the desktop window stack. Only windows opened as menu submenus or transient modal alerts omit the back icon.
 - Do not leave a resize icon on its own; if there are no scroll bars, remove resize and toggle as well.
 - When sizing and placing dialogue content, use the visible work area as the geometry reference rather than the outer window position.
+- Never let text clip or run tight against window or panel borders. Ensure at least `16` to `24` OS units clearance between text labels and the window or panel boundary. Icon templates render using the desktop font (`Homerton.Medium`); size icon widths generously so font rendering variations do not truncate text.
 
 ## Practical grey mapping
 

@@ -84,6 +84,16 @@ Coordinates:
 | `Font_FindFont` DPI | 0 = default 90; −1 = current screen |
 | String terminators | null or CR |
 
+## Standard desktop fonts
+
+| Font Identifier | Category | Typical Use |
+|-----------------|----------|-------------|
+| `Homerton.Medium` | Sans-serif (Helvetica-style) | Standard desktop font for UI labels, titles, and dialogue controls |
+| `Trinity.Medium` | Serif (Times-style) | Document body text, documentation |
+| `Corpus.Medium` | Monospaced (Courier-style) | Terminal emulators, code, hex editors, tabular aligned data |
+
+*Note: In `Font_Paint`, coordinates specify the **text baseline** (descenders hang below the Y coordinate), unlike VDU 5 which uses the top-left of the 8×8 cell.*
+
 ## Focused font references
 
 * Rendering details: [font-rendering.md](font-rendering.md)
