@@ -5,6 +5,7 @@ Use this file for runtime window protocol handling:
 * `Redraw_Window_Request`
 * `Open_Window_Request`
 * redraw and update rectangle loops
+* text rendering in redraw loops (Font Manager, Wimp_PlotIcon, VDU 5)
 * `Wimp_GetWindowOutline`
 * `Wimp_ForceRedraw`
 
@@ -57,6 +58,37 @@ Check the SWI contract before using `Wimp_ForceRedraw`. It takes raw register co
 
 * if `R0 = -1`, the redraw area is in screen coordinates
 * if `R0` is a window handle, the redraw area is relative to the work area origin
+
+## Rendering text in redraw loops
+
+When drawing text inside a `Wimp_RedrawWindow` or `Wimp_UpdateWindow` loop, strive to use the desktop antialiased font system instead of raw `VDU 5` system text.
+
+### Option 1: Wimp_PlotIcon (Recommended for UI text, labels, and panels)
+
+For buttons, status labels, score readouts, or fixed panels, the cleanest method is `Wimp_PlotIcon` (`wimp_plot_icon`):
+* Construct a transient `wimp_icon` block with `wimp_ICON_TEXT` (and optional `wimp_ICON_BORDER`, `wimp_ICON_FILLED`, `wimp_ICON_VCENTRED`, etc.).
+* Call `wimp_plot_icon(&icon)`.
+* **Advantages**: Automatically renders using the configured desktop outline font (`Homerton.Medium`), respects desktop colours and 3D borders, and clips to the icon box without manual font handle tracking.
+* **Coordinate convention**: When called inside a `Wimp_RedrawWindow` or `Wimp_UpdateWindow` loop, the icon bounding box must contain **window-relative (work area) coordinates** (e.g. `0` to `WINDOW_WIDTH`, `-WINDOW_HEIGHT` to `0`), **not screen coordinates** (`ox + x`). Adding screen offsets (`ox, oy`) causes the icon to be placed far outside the clip rectangle so nothing renders.
+* **3D Borders and validation**: When applying 3D border validation strings like `"R5"` (sunken display field) or `"R2"` (action button), ensure `wimp_ICON_BORDER` is set in `icon.flags` alongside `wimp_ICON_INDIRECTED`.
+
+### Option 2: Font Manager Direct Paint (For canvas graphics, code, and tabular data)
+
+When plotting text directly to the graphics canvas:
+1. **Startup**: Cache font handles using `Font_FindFont` (`font_find_font`):
+   * Proportional text: `"Homerton.Medium"` at 12pt (`12 * 16 = 192`).
+   * Monospaced/code/hex text: `"Corpus.Medium"` at 10pt (`160`) or 12pt (`192`).
+2. **Redraw loop**:
+   * Set colours using `ColourTrans_SetFontColours` (`colourtrans_set_font_colours`) to enable anti-aliasing against the window background (passing a non-zero font handle in `R0` also selects that font as current).
+   * Paint text using `Font_Paint` (`font_paint`) with bit 4 set (`font_OS_UNITS`, coordinates in OS units) and bit 8 set (`font_GIVEN_FONT`) if passing a font handle in `R0` to override the current font.
+   * **Coordinate convention**: Unlike `Wimp_PlotIcon`, `Font_Paint` ignores VDU origins and takes **absolute screen coordinates** (`ox + x`, `oy + y`) for the **baseline** of the text (descenders hang below the baseline).
+3. **Shutdown**: Release handles with `Font_LoseFont` (`font_lose_font` / `xfont_lose_font`).
+
+### VDU 5 Caveats (Legacy Fallback Only)
+
+If `VDU 5` must be used for retro 8-bit styling or quick debugging:
+* `VDU 5` renders an archaic 8×8 teletext bitmap font without anti-aliasing.
+* **Top-left coordinate convention**: In `VDU 5` mode, coordinates specify the **top-left** of the character cell (drawn downwards). Plotting text at the bottom of a row (`y_bot`) will cause characters to hang below the line and clip or corrupt the row below. Text baseline must be offset downward by `32` OS units (in mode 27/28).
 
 ## Diagnostics
 

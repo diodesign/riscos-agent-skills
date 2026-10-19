@@ -69,6 +69,26 @@ If the populated proginfo text is too long for the existing layout, either:
 * widen the proginfo value icons and make the window correspondingly wider
 * or shorten the populated text so it fits the existing template cleanly
 
+## Primary application window
+
+When the application opens a main window (for example, on `Select` over the iconbar icon or on startup):
+
+* **Window furniture**: The window must provide Moveable, Title, Close, and Back furniture:
+  `wimp_WINDOW_MOVEABLE | wimp_WINDOW_TITLE_ICON | wimp_WINDOW_CLOSE_ICON | wimp_WINDOW_BACK_ICON | wimp_WINDOW_NEW_FORMAT`
+* **Back icon**: Never omit `wimp_WINDOW_BACK_ICON` from an application or canvas window that has a close icon. Users rely on the back icon to lower the window in the desktop stack.
+* **Scrollbars**: Add `wimp_WINDOW_VSCROLL | wimp_WINDOW_HSCROLL | wimp_WINDOW_SIZE_ICON | wimp_WINDOW_TOGGLE_ICON` only if the document or canvas is scrollable/resizeable. Do not leave resize or toggle icons without scrollbars.
+* **Typography**: Strive to use the desktop antialiased font system instead of raw VDU 5 bitmap text. Use `Wimp_PlotIcon` or template icons to inherit the desktop font (`Homerton.Medium`) and 3D borders automatically, or use the Font Manager (`Font_Paint` with `"Homerton.Medium"` or monospaced `"Corpus.Medium"`).
+
+## Layout and anti-clipping rules
+
+Do not assume stock widths are always sufficient. Check the actual runtime string lengths across all windows:
+
+* For ordinary text labels, a common width guideline is:
+  * `16 * nchars + 16` OS units (or more for proportional fonts)
+* In side panels, status bars, and fixed canvas areas, ensure the width accommodates the longest anticipated text string plus at least `16` to `24` OS units of padding from borders.
+* Never allow text to clip or truncate against window or panel edges. If text is too long, either widen the window/panel or shorten the displayed text.
+
+
 ## Startup sequence
 
 The baseline startup sequence is:

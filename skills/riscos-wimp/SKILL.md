@@ -83,3 +83,6 @@ When reviewing code, check these first:
 * plug-in message handlers confusing browser instance handles, plug-in instance handles, stream handles, or task handles
 * TaskWindow integrations that do not distinguish clean exit, forced termination, and partial buffered output
 * file transfer or clipboard paths that preserve the bytes but lose the intended RISC OS filetype
+* application or canvas windows created with a close icon but omitting the back icon (`wimp_WINDOW_BACK_ICON`)
+* custom redraw routines using raw VDU 5 bitmap text for desktop UI instead of antialiased fonts (`Wimp_PlotIcon` or `Font_Paint`)
+* window work areas, panels, or redraw extents sized too narrowly, causing text to clip or truncate against window borders

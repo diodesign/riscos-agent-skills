@@ -54,4 +54,6 @@ When reviewing a desktop application structure, check these first:
 * application renames that updated `COMPONENT` but missed `!Run`, `VersionNum`, help/messages, or task-name strings
 * SWI calls leaking directly into business logic instead of being isolated behind helpers
 * proginfo windows created from templates but not given open-window handling, so they cannot be moved correctly
-* proginfo templates left at stock width even though the runtime `Purpose` or other values are known to be longer than the icon widths will accommodate
+* window work areas, side panels, status bars, or proginfo templates sized too narrowly for their contained text, causing text clipping or truncation against borders (ensure width >= max_text_width + margins)
+* application main windows or canvas windows created with a close icon but missing the back icon (`wimp_WINDOW_BACK_ICON`)
+* application windows using raw VDU 5 bitmap text for desktop UI or data display instead of the antialiased font system (`Wimp_PlotIcon` or Font Manager `Homerton.Medium`/`Corpus.Medium`)
